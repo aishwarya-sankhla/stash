@@ -55,6 +55,16 @@ export function buildReport(data: AppData, currentMonth: string): AdvisorReport 
   const advice: Advice[] = []
   const add = (a: Advice) => advice.push(a)
 
+  // --- Profile ---------------------------------------------------------------
+  if (!profile.confirmed) {
+    add({
+      id: 'profile',
+      severity: 'critical',
+      title: 'Set up your profile for accurate advice',
+      detail: `Right now this advice assumes you're ${profile.age}, with ${profile.riskTolerance} risk tolerance, ${profile.dependents} dependents, no high-interest debt and no insurance. Your age and risk tolerance set your target investment mix.`,
+    })
+  }
+
   // --- Cash flow -----------------------------------------------------------
   const avg = monthlyAverages(data.transactions, currentMonth)
   const rate = savingsRate(avg.income, avg.expenses)

@@ -8,7 +8,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
   const fileInput = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
   const p = data.profile
-  const update = (patch: Partial<Profile>) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch } }))
+  const update = (patch: Partial<Profile>) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch, confirmed: true } }))
 
   function exportJson() {
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -39,7 +39,14 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
     <div className="stack">
       <PageHeader eyebrow="Preferences" title="Settings" />
       <section className="card">
-        <h2>About you</h2>
+        <div className="card-head">
+          <h2>About you</h2>
+          {!p.confirmed && (
+            <button className="primary" onClick={() => update({})}>
+              Looks right
+            </button>
+          )}
+        </div>
         <p className="muted small">The advisor uses this to tailor recommendations.</p>
         <div className="form-grid">
           <label>

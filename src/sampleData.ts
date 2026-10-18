@@ -48,6 +48,7 @@ export function sampleData(today = new Date()): AppData {
       highInterestDebt: 0,
       hasHealthInsurance: true,
       hasTermInsurance: false,
+      confirmed: true,
     },
   }
 }

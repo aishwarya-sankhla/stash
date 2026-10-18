@@ -44,6 +44,16 @@ describe('savingStreak', () => {
   })
 })
 
+describe('buildReport profile prompt', () => {
+  it('leads with a profile prompt until the profile is confirmed', () => {
+    const unconfirmed = buildReport(data({}), '2026-10')
+    expect(unconfirmed.advice[0].id).toBe('profile')
+
+    const confirmed = buildReport(data({ profile: { ...DEFAULT_DATA.profile, confirmed: true } }), '2026-10')
+    expect(confirmed.advice.some((a) => a.id === 'profile')).toBe(false)
+  })
+})
+
 describe('buildReport cash flow', () => {
   it('averages completed months with data, ignoring the partial current month and empty months', () => {
     const report = buildReport(

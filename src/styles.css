@@ -257,6 +257,7 @@ input[type='checkbox'] { width: 1.15rem; height: 1.15rem; accent-color: var(--in
 .sev-tip .advice-kicker { color: #5b45e0; }
 .sev-good .advice-kicker { color: #1d7f55; }
 .advice-title { font-family: var(--display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
+.advice-action { margin-top: 0.75rem; padding: 0.45rem 0.95rem; font-size: 0.88rem; }
 .advice-detail { color: var(--ink-2); margin-top: 0.25rem; line-height: 1.5; font-size: 0.93rem; }
 
 .plan-total { font-family: var(--display); font-weight: 800; font-size: 2.3rem; letter-spacing: -0.04em; line-height: 1; }

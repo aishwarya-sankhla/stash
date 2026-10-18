@@ -12,7 +12,7 @@ const SEVERITY: Record<Severity, { label: string; icon: LucideIcon; tint: Tint }
 }
 const CLASSES: PortfolioClass[] = ['equity', 'debt', 'gold']
 
-export function Advisor({ data, currentMonth }: { data: AppData; currentMonth: string }) {
+export function Advisor({ data, currentMonth, onSetupProfile }: { data: AppData; currentMonth: string; onSetupProfile: () => void }) {
   const r = buildReport(data, currentMonth)
   const planTotal = r.monthlyPlan.reduce((s, p) => s + p.amount, 0)
   const counts = r.advice.reduce<Partial<Record<Severity, number>>>((acc, a) => ({ ...acc, [a.severity]: (acc[a.severity] ?? 0) + 1 }), {})
@@ -57,6 +57,11 @@ export function Advisor({ data, currentMonth }: { data: AppData; currentMonth: s
                   <div className="advice-kicker">{s.label}</div>
                   <div className="advice-title">{a.title}</div>
                   <div className="advice-detail">{a.detail}</div>
+                  {a.id === 'profile' && (
+                    <button className="primary advice-action" onClick={onSetupProfile}>
+                      Set up profile
+                    </button>
+                  )}
                 </div>
               </li>
             )

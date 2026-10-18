@@ -53,7 +53,7 @@ export default function App() {
         {tab === 'Transactions' && <Transactions data={data} setData={setData} />}
         {tab === 'Budgets' && <Budgets data={data} setData={setData} currentMonth={currentMonth} />}
         {tab === 'Investments' && <Investments data={data} setData={setData} />}
-        {tab === 'Advisor' && <Advisor data={data} currentMonth={currentMonth} />}
+        {tab === 'Advisor' && <Advisor data={data} currentMonth={currentMonth} onSetupProfile={() => setTab('Settings')} />}
         {tab === 'Settings' && <Settings data={data} setData={setData} />}
       </main>
     </div>

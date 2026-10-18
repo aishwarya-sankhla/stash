@@ -28,6 +28,8 @@ export interface Profile {
   highInterestDebt: number // credit cards, personal loans, etc.
   hasHealthInsurance: boolean
   hasTermInsurance: boolean
+  /** True once the user has edited or confirmed their profile; until then the advisor runs on defaults. */
+  confirmed: boolean
 }
 
 export interface AppData {
@@ -74,5 +76,6 @@ export const DEFAULT_DATA: AppData = {
     highInterestDebt: 0,
     hasHealthInsurance: false,
     hasTermInsurance: false,
+    confirmed: false,
   },
 }
