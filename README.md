@@ -31,6 +31,8 @@ npm run dist:win    # release/Stash Setup <version>.exe and a portable .exe (on 
 npm run dist:mac    # release/Stash-<version>.dmg (run on a Mac)
 ```
 
+To build the Mac app on Linux instead: `npm run build && npx electron-builder --mac dir --arm64 --x64`, then ad-hoc sign each `Stash.app` with [rcodesign](https://github.com/indygreg/apple-platform-rs) (`rcodesign sign release/mac-arm64/Stash.app`) and zip it with `zip -ry` to keep symlinks. Apple Silicon Macs won't run an unsigned app.
+
 Builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first launch ("More info → Run anyway" on Windows; on macOS, System Settings → Privacy & Security → Open Anyway).
 
 ## Offline use
