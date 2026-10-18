@@ -1,5 +1,16 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
-import { DEFAULT_DATA, type AppData } from './types'
+import { newId } from './format'
+import {
+  ASSET_CLASS_LABELS,
+  DEFAULT_DATA,
+  EXPENSE_CATEGORIES,
+  INCOME_CATEGORIES,
+  type AppData,
+  type AssetClass,
+  type Holding,
+  type Profile,
+  type Transaction,
+} from './types'
 
 export type SetData = Dispatch<SetStateAction<AppData>>
 
@@ -13,7 +24,7 @@ interface StashDesktop {
   openFile(): Promise<{ path: string; json: string } | null>
   reveal(): Promise<void>
 }
-export const desktop = (window as { stashDesktop?: StashDesktop }).stashDesktop
+export const desktop = (globalThis as { stashDesktop?: StashDesktop }).stashDesktop
 
 /** Path of the desktop data file currently being written to. */
 export let desktopDataPath = ''
@@ -33,13 +44,68 @@ export async function openDataFile() {
   return { path: result.path, data: parseData(result.json) }
 }
 
-export function parseData(json: string): AppData {
-  const parsed = JSON.parse(json) as Partial<AppData>
+type Json = Record<string, unknown>
+const STASH_KEYS = ['transactions', 'holdings', 'budgets', 'profile']
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
+const list = (v: unknown) => (Array.isArray(v) ? v : [])
+const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+const text = (v: unknown) => (typeof v === 'string' ? v : '')
+
+function toTransaction(v: unknown): Transaction | null {
+  if (!isObject(v)) return null
+  const amount = finite(v.amount)
+  const type = v.type === 'income' || v.type === 'expense' ? v.type : null
+  const date = text(v.date)
+  if (!type || amount === null || amount <= 0 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+  const known = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
+  const category = known.includes(text(v.category)) ? text(v.category) : 'Other'
+  return { id: text(v.id) || newId(), date, type, category, amount, note: text(v.note) }
+}
+
+function toHolding(v: unknown): Holding | null {
+  if (!isObject(v)) return null
+  const invested = finite(v.invested)
+  const currentValue = finite(v.currentValue)
+  const assetClass = text(v.assetClass)
+  if (!text(v.name) || invested === null || invested < 0 || currentValue === null || currentValue < 0) return null
+  if (!Object.hasOwn(ASSET_CLASS_LABELS, assetClass)) return null
+  return { id: text(v.id) || newId(), name: text(v.name), assetClass: assetClass as AssetClass, invested, currentValue }
+}
+
+function toProfile(v: unknown): Profile {
+  const p = isObject(v) ? v : {}
+  const d = DEFAULT_DATA.profile
+  const nonNegative = (x: unknown, fallback: number) => (finite(x) !== null && (x as number) >= 0 ? (x as number) : fallback)
   return {
-    transactions: parsed.transactions ?? [],
-    budgets: parsed.budgets ?? {},
-    holdings: parsed.holdings ?? [],
-    profile: { ...DEFAULT_DATA.profile, ...parsed.profile },
+    age: finite(p.age) !== null && (p.age as number) >= 1 && (p.age as number) <= 120 ? (p.age as number) : d.age,
+    riskTolerance: p.riskTolerance === 'conservative' || p.riskTolerance === 'aggressive' ? p.riskTolerance : 'moderate',
+    dependents: nonNegative(p.dependents, d.dependents),
+    highInterestDebt: nonNegative(p.highInterestDebt, d.highInterestDebt),
+    hasHealthInsurance: p.hasHealthInsurance === true,
+    hasTermInsurance: p.hasTermInsurance === true,
+    confirmed: p.confirmed === true,
+  }
+}
+
+/**
+ * Parses saved or imported data, keeping only well-formed entries. Data files can be edited by hand or
+ * crafted, so nothing here trusts their shape: bad entries are dropped instead of crashing the UI.
+ */
+export function parseData(json: string): AppData {
+  const parsed: unknown = JSON.parse(json)
+  if (!isObject(parsed) || !STASH_KEYS.some((k) => k in parsed)) throw new Error('Not Stash data')
+  const budgets: Record<string, number> = {}
+  if (isObject(parsed.budgets)) {
+    for (const [category, limit] of Object.entries(parsed.budgets)) {
+      const n = finite(limit)
+      if (EXPENSE_CATEGORIES.includes(category) && n !== null && n > 0) budgets[category] = n
+    }
+  }
+  return {
+    transactions: list(parsed.transactions).map(toTransaction).filter((t) => t !== null),
+    budgets,
+    holdings: list(parsed.holdings).map(toHolding).filter((h) => h !== null),
+    profile: toProfile(parsed.profile),
   }
 }
 

@@ -1,11 +1,14 @@
 // Electron main process: hosts the Stash UI and stores its data in a JSON file on disk.
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, session, shell } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
+const { pathToFileURL } = require('node:url')
 
 const configFile = () => path.join(app.getPath('userData'), 'config.json')
 const defaultDataFile = () => path.join(app.getPath('documents'), 'Stash', 'stash-data.json')
 const JSON_FILTER = [{ name: 'Stash data', extensions: ['json'] }]
+const indexFile = path.join(__dirname, '..', 'dist', 'index.html')
+const pageUrl = process.env.STASH_DEV_URL || pathToFileURL(indexFile).href
 
 let win
 let dataFile
@@ -26,13 +29,16 @@ function rememberDataFile(file) {
 
 /** Write to a temp file, then rename, so a crash mid-write never leaves a half-written data file. */
 function writeAtomic(file, text) {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.mkdirSync(path.dirname(file), { recursive: true, mode: 0o700 })
   const tmp = `${file}.tmp`
-  fs.writeFileSync(tmp, text)
+  fs.writeFileSync(tmp, text, { mode: 0o600 }) // financial data: readable by this user only
   fs.renameSync(tmp, file)
 }
 
-/** Returns the file's JSON text, or null if it doesn't exist. Throws if it exists but isn't valid JSON. */
+const looksLikeStashData = (d) =>
+  d !== null && typeof d === 'object' && !Array.isArray(d) && ['transactions', 'holdings', 'budgets', 'profile'].some((k) => k in d)
+
+/** Returns the file's JSON text, or null if it doesn't exist. Throws if it exists but isn't Stash data. */
 function readJson(file) {
   let text
   try {
@@ -41,11 +47,27 @@ function readJson(file) {
     if (err.code === 'ENOENT') return null
     throw err
   }
-  JSON.parse(text)
+  if (!looksLikeStashData(JSON.parse(text))) throw new Error('Not Stash data')
   return text
 }
 
+/** Only the Stash window's own page may use the file APIs (navigation away from it is blocked below). */
+function fromStashPage(event) {
+  return Boolean(win) && event.sender === win.webContents && event.senderFrame?.routingId === win.webContents.mainFrame.routingId
+}
+
+function handle(channel, fn) {
+  ipcMain.handle(channel, (event, ...args) => {
+    if (!fromStashPage(event)) throw new Error('Blocked IPC from unexpected sender')
+    return fn(event, ...args)
+  })
+}
+
 ipcMain.on('stash:load', (event) => {
+  if (!fromStashPage(event)) {
+    event.returnValue = { path: '', json: null }
+    return
+  }
   try {
     event.returnValue = { path: dataFile, json: readJson(dataFile) }
   } catch {
@@ -62,17 +84,17 @@ ipcMain.on('stash:load', (event) => {
   }
 })
 
-ipcMain.handle('stash:save', (_event, json) => writeAtomic(dataFile, json))
+handle('stash:save', (_event, json) => writeAtomic(dataFile, String(json)))
 
-ipcMain.handle('stash:moveTo', async (_event, json) => {
+handle('stash:moveTo', async (_event, json) => {
   const result = await dialog.showSaveDialog(win, { title: 'Move data file', defaultPath: dataFile, filters: JSON_FILTER })
   if (result.canceled || !result.filePath) return null
-  writeAtomic(result.filePath, json)
+  writeAtomic(result.filePath, String(json))
   rememberDataFile(result.filePath)
   return dataFile
 })
 
-ipcMain.handle('stash:openFile', async () => {
+handle('stash:openFile', async () => {
   const result = await dialog.showOpenDialog(win, { title: 'Open data file', properties: ['openFile'], filters: JSON_FILTER })
   if (result.canceled || result.filePaths.length === 0) return null
   const file = result.filePaths[0]
@@ -80,14 +102,14 @@ ipcMain.handle('stash:openFile', async () => {
   try {
     json = readJson(file)
   } catch {
-    dialog.showErrorBox('Not a Stash data file', `${file} isn't valid JSON.`)
+    dialog.showErrorBox('Not a Stash data file', `${file} isn't a Stash data file, so Stash didn't open it.`)
     return null
   }
   rememberDataFile(file)
   return { path: file, json }
 })
 
-ipcMain.handle('stash:reveal', () => shell.showItemInFolder(dataFile))
+handle('stash:reveal', () => shell.showItemInFolder(dataFile))
 
 function createWindow() {
   win = new BrowserWindow({
@@ -106,8 +128,7 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   win.webContents.on('will-navigate', (event) => event.preventDefault())
 
-  if (process.env.STASH_DEV_URL) win.loadURL(process.env.STASH_DEV_URL)
-  else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
+  win.loadURL(pageUrl)
 }
 
 // One window only, so two copies can't overwrite each other's saves.
@@ -121,6 +142,9 @@ if (!app.requestSingleInstanceLock()) {
     }
   })
   app.whenReady().then(() => {
+    // Stash needs no camera, microphone, location, notifications, etc.
+    session.defaultSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false))
+    session.defaultSession.setPermissionCheckHandler(() => false)
     dataFile = readConfig().dataFile || defaultDataFile()
     createWindow()
     app.on('activate', () => BrowserWindow.getAllWindows().length === 0 && createWindow())

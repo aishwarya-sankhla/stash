@@ -54,7 +54,8 @@
         "AppImage"
       ],
       "category": "Finance",
-      "syncDesktopName": true
+      "syncDesktopName": true,
+      "executableName": "stash"
     },
     "win": {
       "target": [
@@ -72,6 +73,12 @@
         "zip"
       ],
       "category": "public.app-category.finance"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true
     }
   },
   "desktopName": "stash.desktop"
