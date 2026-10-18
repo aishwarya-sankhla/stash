@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { sampleData } from '../sampleData'
-import { parseData, type SetData } from '../store'
+import { desktop, desktopDataPath, moveDataFile, openDataFile, parseData, type SetData } from '../store'
 import { DEFAULT_DATA, type AppData, type Profile, type RiskTolerance } from '../types'
 import { PageHeader } from './ui'
 
 export function Settings({ data, setData }: { data: AppData; setData: SetData }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [message, setMessage] = useState('')
+  const [filePath, setFilePath] = useState(desktopDataPath)
   const p = data.profile
   const update = (patch: Partial<Profile>) => setData((d) => ({ ...d, profile: { ...d.profile, ...patch, confirmed: true } }))
 
@@ -25,6 +26,26 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
       setMessage(`Imported ${file.name}.`)
     } catch {
       setMessage('That file is not valid finance data JSON.')
+    }
+  }
+
+  async function moveFile() {
+    const path = await moveDataFile(data)
+    if (path) {
+      setFilePath(path)
+      setMessage('Data file moved. New changes save there.')
+    }
+  }
+
+  async function openFile() {
+    try {
+      const result = await openDataFile()
+      if (!result) return
+      setData(result.data)
+      setFilePath(result.path)
+      setMessage(`Opened ${result.path}.`)
+    } catch {
+      setMessage("That file doesn't look like Stash data.")
     }
   }
 
@@ -85,10 +106,27 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
           </label>
         </div>
       </section>
+      {desktop && (
+        <section className="card">
+          <div className="card-head">
+            <h2>Data file</h2>
+            <span className="tag ok">Auto-saving</span>
+          </div>
+          <p className="muted small">Every change is saved to this file on your computer straight away. Back it up or sync it like any other file.</p>
+          <code className="file-path">{filePath}</code>
+          <div className="row">
+            <button onClick={() => desktop!.reveal()}>Show in folder</button>
+            <button onClick={moveFile}>Move to…</button>
+            <button onClick={openFile}>Open another file…</button>
+          </div>
+        </section>
+      )}
       <section className="card">
         <h2>Your data</h2>
         <p className="muted small">
-          Everything is stored in this browser only. Export a backup regularly, or to move your data to another device.
+          {desktop
+            ? 'Export a dated backup copy, or import data exported from the browser version.'
+            : 'Everything is stored in this browser only. Export a backup regularly, or to move your data to another device.'}
         </p>
         <div className="row">
           <button onClick={exportJson}>Export JSON</button>

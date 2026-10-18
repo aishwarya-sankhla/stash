@@ -206,6 +206,10 @@ input.month { border-radius: 999px; background: var(--surface); font-weight: 500
 .search input { border: none; background: none; box-shadow: none !important; padding-left: 0.2rem; color: var(--ink); }
 .search:focus-within { border-color: var(--ink); }
 
+.file-path {
+  display: block; margin: 0.9rem 0; padding: 0.7rem 0.9rem; border-radius: 12px; background: var(--sunk);
+  font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.85rem; word-break: break-all;
+}
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.1rem; margin-top: 1rem; }
 .form-grid label { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.9rem; font-weight: 600; }
 .form-grid label.check { flex-direction: row; align-items: center; gap: 0.6rem; font-weight: 500; }
