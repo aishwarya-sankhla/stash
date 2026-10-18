@@ -21,7 +21,7 @@ export default function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="logo">₹</span> Paisa
+          <span className="logo">₹</span> Stash
           <span className="tagline">Finance tracker &amp; advisor</span>
         </div>
         <nav>

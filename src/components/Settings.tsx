@@ -13,7 +13,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
-    a.download = `finance-data-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `stash-data-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(a.href)
   }

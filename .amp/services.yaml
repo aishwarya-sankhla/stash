@@ -3,5 +3,5 @@ services:
     command: npm run dev -- --port "$PORT" --strictPort
     portal:
       url: /
-      title: Finance Tracker
+      title: Stash
       description: Data is stored in your browser. Use Settings → Load sample data to explore.

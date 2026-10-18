@@ -1,4 +1,4 @@
-# Paisa — personal finance tracker & investment advisor
+# Stash — personal finance tracker & investment advisor
 
 A React + TypeScript app for tracking income, expenses, budgets and investments (in ₹), with a rule-based advisor.
 
