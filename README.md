@@ -20,4 +20,8 @@ npm run build    # typecheck + production build
 
 In an Amp orb, `amp orb services ensure` starts the app from `.amp/services.yaml` and prints a portal URL.
 
+## Offline use
+
+`npm run build` produces `Stash.html`: a single self-contained file with all code, styles and fonts inlined. Open it by double-clicking; it needs no server and no internet. Data lives in that browser's localStorage, so keep using the same browser and use Settings → Export JSON for backups.
+
 The advisor gives general, rule-based guidance, not personalised financial advice.

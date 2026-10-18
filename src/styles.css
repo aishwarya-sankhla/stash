@@ -19,8 +19,8 @@
   --warn: #f5a524;
   --radius: 22px;
   --shadow: 0 1px 0 rgba(23, 20, 31, 0.03), 0 14px 34px -22px rgba(23, 20, 31, 0.22);
-  --display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
-  --body: 'DM Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --display: 'Bricolage Grotesque Variable', ui-sans-serif, system-ui, sans-serif;
+  --body: 'DM Sans Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-family: var(--body);
   font-size: 15px;
   color: var(--ink);
