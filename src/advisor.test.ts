@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReport, targetAllocation } from './advisor'
-import { applySips, fdValue, lastMonths, savingStreak, sipCoveredMonth } from './finance'
+import { applySips, fdValue, lastMonths, recordNetWorth, savingStreak, sipCoveredMonth } from './finance'
 import { DEFAULT_DATA, type AppData, type Holding, type Transaction } from './types'
 
 const tx = (date: string, type: Transaction['type'], amount: number, category = 'Other'): Transaction => ({
@@ -87,6 +87,27 @@ describe('fdValue', () => {
     const report = buildReport(data({ holdings: [holding('equity', 700000)], fds }), '2026-10', '2026-10-18')
     expect(report.currentAllocation?.debt).toBeCloseTo(0.3, 5)
     expect(report.advice.map((a) => a.id).filter((id) => id.startsWith('fd-'))).toEqual(['fd-soon'])
+  })
+})
+
+describe('recordNetWorth', () => {
+  const zero = { equity: 0, debt: 0, gold: 0, cash: 0, realEstate: 0, other: 0 }
+
+  it('keeps one snapshot per month: updates the current month, keeps earlier months, skips no-op saves', () => {
+    const sep = { month: '2026-09', total: 500, byClass: { ...zero, equity: 500 } }
+    const start = data({ holdings: [holding('equity', 600.4), holding('gold', 99.7)], netWorth: [sep] })
+
+    const oct = recordNetWorth(start, '2026-10-03')
+    expect(oct.netWorth).toEqual([sep, { month: '2026-10', total: 700, byClass: { ...zero, equity: 600, gold: 100 } }])
+    expect(recordNetWorth(oct, '2026-10-20')).toBe(oct)
+
+    const updated = recordNetWorth({ ...oct, holdings: [holding('equity', 800)] }, '2026-10-20')
+    expect(updated.netWorth).toEqual([sep, { month: '2026-10', total: 800, byClass: { ...zero, equity: 800 } }])
+  })
+
+  it('records nothing until there is something to record', () => {
+    const empty = data({})
+    expect(recordNetWorth(empty, '2026-10-18')).toBe(empty)
   })
 })
 

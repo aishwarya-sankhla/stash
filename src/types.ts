@@ -52,11 +52,20 @@ export interface Profile {
   confirmed: boolean
 }
 
+/** Net worth as it stood at the end of a month (or so far, for the current month). */
+export interface NetWorthSnapshot {
+  month: string // YYYY-MM
+  total: number
+  byClass: Record<AssetClass, number>
+}
+
 export interface AppData {
   transactions: Transaction[]
   budgets: Record<string, number> // expense category -> monthly limit
   holdings: Holding[]
   fds: FixedDeposit[]
+  /** One snapshot per month, oldest first, recorded automatically whenever the data changes. */
+  netWorth: NetWorthSnapshot[]
   profile: Profile
 }
 
@@ -91,6 +100,7 @@ export const DEFAULT_DATA: AppData = {
   budgets: {},
   holdings: [],
   fds: [],
+  netWorth: [],
   profile: {
     age: 30,
     riskTolerance: 'moderate',

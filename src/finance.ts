@@ -139,3 +139,18 @@ export function totalsByClass(data: Pick<AppData, 'holdings' | 'fds'>, today: st
   for (const fd of data.fds) totals.debt += fdValue(fd, today)
   return totals
 }
+
+/**
+ * Records this month's net worth (latest value wins), so the history grows by one point per month.
+ * Returns the same object when nothing changed, so callers can skip saving.
+ */
+export function recordNetWorth(data: AppData, today: string): AppData {
+  const raw = totalsByClass(data, today)
+  const byClass = Object.fromEntries(Object.entries(raw).map(([k, v]) => [k, Math.round(v)])) as Record<AssetClass, number>
+  const total = Object.values(byClass).reduce((s, v) => s + v, 0)
+  const month = monthKey(today)
+  const existing = data.netWorth.find((s) => s.month === month)
+  if (existing ? existing.total === total && (Object.keys(byClass) as AssetClass[]).every((k) => existing.byClass[k] === byClass[k]) : total === 0) return data
+  const others = data.netWorth.filter((s) => s.month !== month)
+  return { ...data, netWorth: [...others, { month, total, byClass }].sort((a, b) => a.month.localeCompare(b.month)) }
+}

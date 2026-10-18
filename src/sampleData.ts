@@ -1,6 +1,6 @@
-import { isoDate, lastMonths, monthKey, sipCoveredMonth } from './finance'
+import { isoDate, lastMonths, monthKey, sipCoveredMonth, totalsByClass } from './finance'
 import { newId } from './format'
-import type { AppData, Transaction } from './types'
+import type { AppData, AssetClass, FixedDeposit, Holding, NetWorthSnapshot, Transaction } from './types'
 
 /** Six months of realistic demo data ending in the current month. */
 const shiftDays = (d: Date, days: number) => isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days))
@@ -31,22 +31,39 @@ export function sampleData(today = new Date()): AppData {
     if (i === 4) add(`${m}-24`, 'expense', 'Health', 6500, 'Doctor & medicines')
   })
 
+  const holdings: Holding[] = [
+    { id: newId(), name: 'Nifty 50 index fund', assetClass: 'equity', invested: 420000, currentValue: 545000, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 5, lastApplied: sipCoveredMonth(isoDate(today), 5) } },
+    { id: newId(), name: 'Flexi-cap mutual fund', assetClass: 'equity', invested: 250000, currentValue: 301000, valueUpdated: shiftDays(today, -12), sip: { amount: 5000, day: 25, lastApplied: sipCoveredMonth(isoDate(today), 25) } },
+    { id: newId(), name: 'Direct stocks', assetClass: 'equity', invested: 150000, currentValue: 162000, valueUpdated: shiftDays(today, -75) },
+    { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000, valueUpdated: shiftDays(today, -12) },
+    { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000, valueUpdated: shiftDays(today, -12) },
+    { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000, valueUpdated: shiftDays(today, -12) },
+    { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000, valueUpdated: shiftDays(today, -12) },
+  ]
+  const fds: FixedDeposit[] = [
+    { id: newId(), bank: 'SBI', principal: 200000, rate: 7.1, startDate: shiftDays(today, -345), maturityDate: shiftDays(today, 20) },
+    { id: newId(), bank: 'HDFC Bank', principal: 150000, rate: 7.25, startDate: shiftDays(today, -120), maturityDate: shiftDays(today, 610) },
+  ]
+
+  // A year of past month-end snapshots growing towards today's totals (this month is recorded live).
+  const now = totalsByClass({ holdings, fds }, isoDate(today))
+  const netWorth: NetWorthSnapshot[] = lastMonths(currentMonth, 12).slice(0, -1).map((month, i) => {
+    const back = 11 - i // months before now
+    const growth = (cls: AssetClass) => {
+      if (cls === 'equity') return 1 - back * 0.03 + Math.sin(i * 1.7) * 0.025 // SIPs plus market swings
+      if (cls === 'cash') return 1 - back * 0.012 + Math.cos(i * 1.3) * 0.02
+      return 1 - back * 0.015
+    }
+    const byClass = Object.fromEntries(Object.entries(now).map(([cls, v]) => [cls, Math.round(v * growth(cls as AssetClass))])) as Record<AssetClass, number>
+    return { month, total: Object.values(byClass).reduce((s, v) => s + v, 0), byClass }
+  })
+
   return {
     transactions,
     budgets: { Groceries: 12000, Dining: 6000, Shopping: 8000, Entertainment: 3000, Transport: 5500 },
-    holdings: [
-      { id: newId(), name: 'Nifty 50 index fund', assetClass: 'equity', invested: 420000, currentValue: 545000, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 5, lastApplied: sipCoveredMonth(isoDate(today), 5) } },
-      { id: newId(), name: 'Flexi-cap mutual fund', assetClass: 'equity', invested: 250000, currentValue: 301000, valueUpdated: shiftDays(today, -12), sip: { amount: 5000, day: 25, lastApplied: sipCoveredMonth(isoDate(today), 25) } },
-      { id: newId(), name: 'Direct stocks', assetClass: 'equity', invested: 150000, currentValue: 162000, valueUpdated: shiftDays(today, -75) },
-      { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000 , valueUpdated: shiftDays(today, -12) },
-      { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000 , valueUpdated: shiftDays(today, -12) },
-      { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000 , valueUpdated: shiftDays(today, -12) },
-      { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000 , valueUpdated: shiftDays(today, -12) },
-    ],
-    fds: [
-      { id: newId(), bank: 'SBI', principal: 200000, rate: 7.1, startDate: shiftDays(today, -345), maturityDate: shiftDays(today, 20) },
-      { id: newId(), bank: 'HDFC Bank', principal: 150000, rate: 7.25, startDate: shiftDays(today, -120), maturityDate: shiftDays(today, 610) },
-    ],
+    holdings,
+    fds,
+    netWorth,
     profile: {
       age: 31,
       riskTolerance: 'moderate',

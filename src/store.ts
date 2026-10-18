@@ -1,5 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
-import { applySips, isoDate } from './finance'
+import { applySips, isoDate, recordNetWorth } from './finance'
 import { newId } from './format'
 import {
   ASSET_CLASS_LABELS,
@@ -10,6 +10,7 @@ import {
   type AssetClass,
   type Holding,
   type FixedDeposit,
+  type NetWorthSnapshot,
   type Profile,
   type Sip,
   type Transaction,
@@ -48,7 +49,7 @@ export async function openDataFile() {
 }
 
 type Json = Record<string, unknown>
-const STASH_KEYS = ['transactions', 'holdings', 'fds', 'budgets', 'profile']
+const STASH_KEYS = ['transactions', 'holdings', 'fds', 'budgets', 'profile', 'netWorth']
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 const list = (v: unknown) => (Array.isArray(v) ? v : [])
 const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -101,6 +102,22 @@ function toFixedDeposit(v: unknown): FixedDeposit | null {
   return { id: text(v.id) || newId(), bank: text(v.bank), principal, rate, startDate, maturityDate }
 }
 
+function toSnapshot(v: unknown): NetWorthSnapshot | null {
+  if (!isObject(v) || !/^\d{4}-(0[1-9]|1[0-2])$/.test(text(v.month))) return null
+  const raw = isObject(v.byClass) ? v.byClass : {}
+  const byClass = Object.fromEntries(
+    Object.keys(ASSET_CLASS_LABELS).map((k) => [k, finite(raw[k]) !== null && (raw[k] as number) >= 0 ? (raw[k] as number) : 0]),
+  ) as Record<AssetClass, number>
+  return { month: text(v.month), total: Object.values(byClass).reduce((s, n) => s + n, 0), byClass }
+}
+
+/** Valid snapshots, one per month (the last one wins), oldest first. */
+function toNetWorth(v: unknown): NetWorthSnapshot[] {
+  const byMonth = new Map<string, NetWorthSnapshot>()
+  for (const snapshot of list(v).map(toSnapshot)) if (snapshot) byMonth.set(snapshot.month, snapshot)
+  return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month))
+}
+
 function toProfile(v: unknown): Profile {
   const p = isObject(v) ? v : {}
   const d = DEFAULT_DATA.profile
@@ -135,6 +152,7 @@ export function parseData(json: string): AppData {
     budgets,
     holdings: list(parsed.holdings).map(toHolding).filter((h) => h !== null),
     fds: list(parsed.fds).map(toFixedDeposit).filter((f) => f !== null),
+    netWorth: toNetWorth(parsed.netWorth),
     profile: toProfile(parsed.profile),
   }
 }
@@ -165,6 +183,11 @@ export function useAppData() {
     window.addEventListener('focus', catchUp)
     return () => window.removeEventListener('focus', catchUp)
   }, [])
+  useEffect(() => {
+    // Keep this month's net worth snapshot current; a no-op when it already matches.
+    const recorded = recordNetWorth(data, isoDate())
+    if (recorded !== data) setData(recorded)
+  }, [data])
   useEffect(() => {
     if (desktop) desktop.save(serialize(data)).catch((err) => alert(`Couldn't save your data file:\n${err}`))
     else localStorage.setItem(STORAGE_KEY, JSON.stringify(data))

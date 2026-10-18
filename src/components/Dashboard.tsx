@@ -4,6 +4,7 @@ import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
 import { isoDate, lastMonths, savingStreak, savingsRate, summarizeMonth, totalsByClass } from '../finance'
 import { formatINR, formatMonth, formatPct } from '../format'
 import type { AppData } from '../types'
+import { NetWorthChart } from './NetWorthChart'
 import { CHART_COLORS, MonthPicker, Ring, Stat } from './ui'
 
 function mood(rate: number | null) {
@@ -23,6 +24,8 @@ export function Dashboard({ data, currentMonth }: { data: AppData; currentMonth:
   const saved = summary.income - summary.expenses
   const netWorth = Object.values(totalsByClass(data, isoDate())).reduce((s, v) => s + v, 0)
   const streak = savingStreak(data.transactions, currentMonth)
+  const lastSnapshot = data.netWorth.filter((s) => s.month < currentMonth).at(-1)
+  const netWorthChange = lastSnapshot ? netWorth - lastSnapshot.total : 0
 
   const categories = Object.entries(summary.byCategory)
     .map(([name, value]) => ({ name, value }))
@@ -62,9 +65,22 @@ export function Dashboard({ data, currentMonth }: { data: AppData; currentMonth:
         <Stat label="Money in" value={formatINR(summary.income)} icon={ArrowDownRight} tint="mint" />
         <Stat label="Money out" value={formatINR(summary.expenses)} icon={ArrowUpRight} tint="peach" />
         <Stat label="Net worth" value={formatINR(netWorth)} icon={Gem} tint="lilac">
-          <div className="stat-foot">across {data.holdings.length + data.fds.length} holdings</div>
+          <div className="stat-foot">
+            {lastSnapshot ? (
+              <>
+                <span className={netWorthChange >= 0 ? 'pos' : 'neg'}>
+                  {netWorthChange >= 0 ? '▲' : '▼'} {formatINR(Math.abs(netWorthChange))}
+                </span>{' '}
+                since {formatMonth(lastSnapshot.month).split(' ')[0]}
+              </>
+            ) : (
+              `across ${data.holdings.length + data.fds.length} holdings`
+            )}
+          </div>
         </Stat>
       </div>
+
+      <NetWorthChart history={data.netWorth} />
 
       <div className="grid2">
         <section className="card">

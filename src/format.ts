@@ -12,3 +12,12 @@ export const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
 export const newId = () => crypto.randomUUID()
+
+/** Short rupee amounts for chart axes, in Indian units: ₹45k, ₹12.4L, ₹1.2Cr. */
+export function formatCompactINR(n: number) {
+  const trim = (x: number) => String(Number(x.toFixed(1)))
+  if (Math.abs(n) >= 1e7) return `₹${trim(n / 1e7)}Cr`
+  if (Math.abs(n) >= 1e5) return `₹${trim(n / 1e5)}L`
+  if (Math.abs(n) >= 1e3) return `₹${Math.round(n / 1e3)}k`
+  return `₹${Math.round(n)}`
+}
