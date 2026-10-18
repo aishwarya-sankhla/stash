@@ -1,10 +1,11 @@
 import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { totalsByClass } from '../finance'
+import { fdValue, isoDate, totalsByClass } from '../finance'
 import { formatINR, formatPct, newId } from '../format'
 import type { SetData } from '../store'
 import { ASSET_CLASS_LABELS, type AppData, type AssetClass } from '../types'
+import { FixedDeposits } from './FixedDeposits'
 import { ASSET_STYLE, IconTile, MoneyInput, PageHeader, Stat, TINTS } from './ui'
 
 const CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
@@ -34,10 +35,11 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
     setData((d) => ({ ...d, holdings: d.holdings.map((h) => (h.id === id ? { ...h, currentValue: value } : h)) }))
   const remove = (id: string) => setData((d) => ({ ...d, holdings: d.holdings.filter((h) => h.id !== id) }))
 
-  const totalInvested = data.holdings.reduce((s, h) => s + h.invested, 0)
-  const totalValue = data.holdings.reduce((s, h) => s + h.currentValue, 0)
+  const today = isoDate()
+  const totalInvested = data.holdings.reduce((s, h) => s + h.invested, 0) + data.fds.reduce((s, f) => s + f.principal, 0)
+  const totalValue = data.holdings.reduce((s, h) => s + h.currentValue, 0) + data.fds.reduce((s, f) => s + fdValue(f, today), 0)
   const gain = totalValue - totalInvested
-  const byClass = totalsByClass(data.holdings)
+  const byClass = totalsByClass(data, today)
   const mix = CLASSES.filter((c) => byClass[c] > 0).map((c) => ({ cls: c, name: shortLabel(c), value: byClass[c] }))
 
   return (
@@ -135,6 +137,7 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
           )}
         </section>
       </div>
+      <FixedDeposits data={data} setData={setData} />
     </div>
   )
 }

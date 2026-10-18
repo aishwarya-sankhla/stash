@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Flame, Gem } from 'lucide-react'
 import { useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { lastMonths, savingStreak, savingsRate, summarizeMonth } from '../finance'
+import { isoDate, lastMonths, savingStreak, savingsRate, summarizeMonth, totalsByClass } from '../finance'
 import { formatINR, formatMonth, formatPct } from '../format'
 import type { AppData } from '../types'
 import { CHART_COLORS, MonthPicker, Ring, Stat } from './ui'
@@ -21,7 +21,7 @@ export function Dashboard({ data, currentMonth }: { data: AppData; currentMonth:
   const summary = summarizeMonth(data.transactions, month)
   const rate = savingsRate(summary.income, summary.expenses)
   const saved = summary.income - summary.expenses
-  const netWorth = data.holdings.reduce((s, h) => s + h.currentValue, 0)
+  const netWorth = Object.values(totalsByClass(data, isoDate())).reduce((s, v) => s + v, 0)
   const streak = savingStreak(data.transactions, currentMonth)
 
   const categories = Object.entries(summary.byCategory)
@@ -62,7 +62,7 @@ export function Dashboard({ data, currentMonth }: { data: AppData; currentMonth:
         <Stat label="Money in" value={formatINR(summary.income)} icon={ArrowDownRight} tint="mint" />
         <Stat label="Money out" value={formatINR(summary.expenses)} icon={ArrowUpRight} tint="peach" />
         <Stat label="Net worth" value={formatINR(netWorth)} icon={Gem} tint="lilac">
-          <div className="stat-foot">across {data.holdings.length} holdings</div>
+          <div className="stat-foot">across {data.holdings.length + data.fds.length} holdings</div>
         </Stat>
       </div>
 

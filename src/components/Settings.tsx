@@ -50,7 +50,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
   }
 
   function replace(next: AppData, label: string) {
-    const hasData = data.transactions.length > 0 || data.holdings.length > 0
+    const hasData = data.transactions.length > 0 || data.holdings.length > 0 || data.fds.length > 0
     if (hasData && !confirm(`${label} will replace all your current data. Continue?`)) return
     setData(next)
     setMessage(`${label} done.`)

@@ -8,6 +8,7 @@ import {
   type AppData,
   type AssetClass,
   type Holding,
+  type FixedDeposit,
   type Profile,
   type Transaction,
 } from './types'
@@ -45,7 +46,7 @@ export async function openDataFile() {
 }
 
 type Json = Record<string, unknown>
-const STASH_KEYS = ['transactions', 'holdings', 'budgets', 'profile']
+const STASH_KEYS = ['transactions', 'holdings', 'fds', 'budgets', 'profile']
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 const list = (v: unknown) => (Array.isArray(v) ? v : [])
 const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -70,6 +71,19 @@ function toHolding(v: unknown): Holding | null {
   if (!text(v.name) || invested === null || invested < 0 || currentValue === null || currentValue < 0) return null
   if (!Object.hasOwn(ASSET_CLASS_LABELS, assetClass)) return null
   return { id: text(v.id) || newId(), name: text(v.name), assetClass: assetClass as AssetClass, invested, currentValue }
+}
+
+const DATE = /^\d{4}-\d{2}-\d{2}$/
+
+function toFixedDeposit(v: unknown): FixedDeposit | null {
+  if (!isObject(v)) return null
+  const principal = finite(v.principal)
+  const rate = finite(v.rate)
+  const startDate = text(v.startDate)
+  const maturityDate = text(v.maturityDate)
+  if (!text(v.bank) || principal === null || principal <= 0 || rate === null || rate < 0 || rate > 50) return null
+  if (!DATE.test(startDate) || !DATE.test(maturityDate) || maturityDate <= startDate) return null
+  return { id: text(v.id) || newId(), bank: text(v.bank), principal, rate, startDate, maturityDate }
 }
 
 function toProfile(v: unknown): Profile {
@@ -105,6 +119,7 @@ export function parseData(json: string): AppData {
     transactions: list(parsed.transactions).map(toTransaction).filter((t) => t !== null),
     budgets,
     holdings: list(parsed.holdings).map(toHolding).filter((h) => h !== null),
+    fds: list(parsed.fds).map(toFixedDeposit).filter((f) => f !== null),
     profile: toProfile(parsed.profile),
   }
 }

@@ -1,8 +1,10 @@
-import { lastMonths, monthKey } from './finance'
+import { isoDate, lastMonths, monthKey } from './finance'
 import { newId } from './format'
 import type { AppData, Transaction } from './types'
 
 /** Six months of realistic demo data ending in the current month. */
+const shiftDays = (d: Date, days: number) => isoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + days))
+
 export function sampleData(today = new Date()): AppData {
   const months = lastMonths(monthKey(today), 6)
   const transactions: Transaction[] = []
@@ -40,6 +42,10 @@ export function sampleData(today = new Date()): AppData {
       { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000 },
       { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000 },
       { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000 },
+    ],
+    fds: [
+      { id: newId(), bank: 'SBI', principal: 200000, rate: 7.1, startDate: shiftDays(today, -345), maturityDate: shiftDays(today, 20) },
+      { id: newId(), bank: 'HDFC Bank', principal: 150000, rate: 7.25, startDate: shiftDays(today, -120), maturityDate: shiftDays(today, 610) },
     ],
     profile: {
       age: 31,

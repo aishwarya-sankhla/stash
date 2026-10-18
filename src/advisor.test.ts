@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReport, targetAllocation } from './advisor'
-import { lastMonths, savingStreak } from './finance'
+import { fdValue, lastMonths, savingStreak } from './finance'
 import { DEFAULT_DATA, type AppData, type Holding, type Transaction } from './types'
 
 const tx = (date: string, type: Transaction['type'], amount: number, category = 'Other'): Transaction => ({
@@ -41,6 +41,28 @@ describe('savingStreak', () => {
     ]
     expect(savingStreak(txs, '2026-10')).toBe(2)
     expect(savingStreak([], '2026-10')).toBe(0)
+  })
+})
+
+describe('fdValue', () => {
+  const fd = { id: 'f', bank: 'SBI', principal: 100000, rate: 7, startDate: '2026-01-01', maturityDate: '2027-01-01' }
+
+  it('compounds quarterly to maturity and stays flat outside the deposit period', () => {
+    // 100000 × (1 + 0.07/4)^4 = 107185.90 (simple or annual interest would give 107000)
+    expect(fdValue(fd, '2027-01-01')).toBeCloseTo(107185.9, 1)
+    expect(fdValue(fd, '2028-06-01')).toBeCloseTo(107185.9, 1)
+    expect(fdValue(fd, '2026-01-01')).toBe(100000)
+    expect(fdValue(fd, '2025-06-01')).toBe(100000)
+  })
+
+  it('counts FDs as debt in the allocation and flags those maturing within 30 days', () => {
+    const fds = [
+      { ...fd, id: 'soon', principal: 300000, startDate: '2026-10-18', maturityDate: '2026-11-17' }, // 30 days left
+      { ...fd, id: 'later', principal: 1, startDate: '2026-10-18', maturityDate: '2026-11-18' }, // 31 days left
+    ]
+    const report = buildReport(data({ holdings: [holding('equity', 700000)], fds }), '2026-10', '2026-10-18')
+    expect(report.currentAllocation?.debt).toBeCloseTo(0.3, 5)
+    expect(report.advice.map((a) => a.id).filter((id) => id.startsWith('fd-'))).toEqual(['fd-soon'])
   })
 })
 

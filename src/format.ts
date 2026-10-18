@@ -8,4 +8,7 @@ export function formatMonth(month: string) {
   return new Date(y, m - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
 }
 
+export const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
 export const newId = () => crypto.randomUUID()

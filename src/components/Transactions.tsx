@@ -1,6 +1,6 @@
 import { Plus, Search, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { monthKey } from '../finance'
+import { isoDate, monthKey } from '../finance'
 import { formatINR, newId } from '../format'
 import type { SetData } from '../store'
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, type AppData, type TxType } from '../types'
@@ -10,17 +10,13 @@ const EXPENSE_QUIPS = ['Logged. No judgement.', 'Tracked and filed.', 'Noted. On
 const INCOME_QUIPS = ['Cha-ching.', 'Money in. Nice.', 'Your stash just grew.', 'Ka-ching.']
 const pick = (xs: string[]) => xs[Math.floor(Math.random() * xs.length)]
 
-const today = () => {
-  const d = new Date() // local date, not UTC (toISOString would be off by a day near midnight in IST)
-  return `${monthKey(d)}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 const formatDay = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 
 export function Transactions({ data, setData }: { data: AppData; setData: SetData }) {
   const [type, setType] = useState<TxType>('expense')
-  const [date, setDate] = useState(today)
+  const [date, setDate] = useState(() => isoDate())
   const [category, setCategory] = useState(EXPENSE_CATEGORIES[0])
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')

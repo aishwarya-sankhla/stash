@@ -1,5 +1,5 @@
-import { monthlyAverages, savingsRate, summarizeMonth, totalsByClass } from './finance'
-import { formatINR, formatPct } from './format'
+import { daysBetween, fdValue, isoDate, monthlyAverages, savingsRate, summarizeMonth, totalsByClass } from './finance'
+import { formatDate, formatINR, formatPct } from './format'
 import type { AppData, Profile } from './types'
 
 export type Severity = 'critical' | 'warning' | 'tip' | 'good'
@@ -50,7 +50,7 @@ export function targetAllocation(profile: Pick<Profile, 'age' | 'riskTolerance'>
 const SEVERITY_ORDER: Severity[] = ['critical', 'warning', 'tip', 'good']
 const CLASS_LABEL: Record<PortfolioClass, string> = { equity: 'Equity', debt: 'Debt', gold: 'Gold' }
 
-export function buildReport(data: AppData, currentMonth: string): AdvisorReport {
+export function buildReport(data: AppData, currentMonth: string, today = isoDate()): AdvisorReport {
   const { profile } = data
   const advice: Advice[] = []
   const add = (a: Advice) => advice.push(a)
@@ -139,7 +139,7 @@ export function buildReport(data: AppData, currentMonth: string): AdvisorReport 
   }
 
   // --- Emergency fund ------------------------------------------------------
-  const classTotals = totalsByClass(data.holdings)
+  const classTotals = totalsByClass(data, today)
   const emergencyTarget = avg.expenses * EMERGENCY_MONTHS
   const emergencyCurrent = classTotals.cash
   const emergencyShortfall = Math.max(0, emergencyTarget - emergencyCurrent)
@@ -193,6 +193,18 @@ export function buildReport(data: AppData, currentMonth: string): AdvisorReport 
         detail: `Every asset class is within ${formatPct(DRIFT_THRESHOLD)} of target. Review again in 6–12 months.`,
       })
     }
+  }
+
+  // --- FDs maturing soon -------------------------------------------------------
+  for (const fd of data.fds) {
+    const daysLeft = daysBetween(today, fd.maturityDate)
+    if (daysLeft < 0 || daysLeft > 30) continue
+    add({
+      id: `fd-${fd.id}`,
+      severity: 'tip',
+      title: `${fd.bank} FD matures ${daysLeft === 0 ? 'today' : `in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`}`,
+      detail: `${formatINR(fdValue(fd, fd.maturityDate))} is due on ${formatDate(fd.maturityDate)}. Decide in advance: renew it, top up your emergency fund, or invest it per your plan. Some banks auto-renew at the then-current rate.`,
+    })
   }
 
   // --- Budgets (current month) ----------------------------------------------

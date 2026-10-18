@@ -1,9 +1,32 @@
-import type { AssetClass, Holding, Transaction } from './types'
+import type { AppData, AssetClass, FixedDeposit, Transaction } from './types'
 
 /** 'YYYY-MM' for a date string or Date. */
 export function monthKey(date: string | Date): string {
   if (typeof date === 'string') return date.slice(0, 7)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+/** Local calendar date as 'YYYY-MM-DD' (not UTC, which can be a day off in IST around midnight). */
+export function isoDate(d = new Date()): string {
+  return `${monthKey(d)}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const dayNumber = (date: string) => {
+  const [y, m, d] = date.split('-').map(Number)
+  return Date.UTC(y, m - 1, d) / 86_400_000
+}
+
+/** Whole days from `from` to `to` (negative if `to` is earlier). */
+export const daysBetween = (from: string, to: string) => dayNumber(to) - dayNumber(from)
+
+/**
+ * Value of a cumulative FD on `date`: interest compounded quarterly, as Indian banks do for cumulative FDs.
+ * Equals the principal before the start date and stops growing at maturity.
+ */
+export function fdValue(fd: FixedDeposit, date: string): number {
+  const tenure = daysBetween(fd.startDate, fd.maturityDate)
+  const elapsed = Math.min(tenure, Math.max(0, daysBetween(fd.startDate, date)))
+  return fd.principal * (1 + fd.rate / 400) ** ((4 * elapsed) / 365)
 }
 
 /** The `count` month keys ending at (and including) `endMonth`, oldest first. */
@@ -72,8 +95,10 @@ export function savingStreak(transactions: Transaction[], currentMonth: string, 
   }
 }
 
-export function totalsByClass(holdings: Holding[]): Record<AssetClass, number> {
+/** Current value per asset class on `today`. FDs count as debt. */
+export function totalsByClass(data: Pick<AppData, 'holdings' | 'fds'>, today: string): Record<AssetClass, number> {
   const totals: Record<AssetClass, number> = { equity: 0, debt: 0, gold: 0, cash: 0, realEstate: 0, other: 0 }
-  for (const h of holdings) totals[h.assetClass] += h.currentValue
+  for (const h of data.holdings) totals[h.assetClass] += h.currentValue
+  for (const fd of data.fds) totals.debt += fdValue(fd, today)
   return totals
 }

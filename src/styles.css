@@ -229,6 +229,16 @@ input[type='checkbox'] { width: 1.15rem; height: 1.15rem; accent-color: var(--in
 .limit-input { width: 9rem; }
 
 /* ---------- Budgets ---------- */
+.fd-form { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; margin-bottom: 0.6rem; }
+.fd-form .grow { flex: 1 1 160px; }
+.fd-form input[type='number'] { width: 9rem; }
+.fd-form .rate-input { width: 7.5rem; }
+.fd-form input { height: 2.75rem; }
+.field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.78rem; font-weight: 600; color: var(--ink-2); }
+.form-error { color: var(--neg); font-size: 0.88rem; margin: 0 0 0.6rem; }
+.fd-value { text-align: right; font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fd-value .chip-sub { font-family: var(--body); }
+.tag.neutral { background: var(--sunk); color: var(--ink-2); }
 .pill-stat { padding: 0.55rem 1rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
 .pill-stat strong { font-family: var(--display); }
 .budget-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }

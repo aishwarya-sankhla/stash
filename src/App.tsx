@@ -23,7 +23,7 @@ export default function App() {
   const [data, setData] = useAppData()
   const [tab, setTab] = useState('Overview')
   const currentMonth = monthKey(new Date())
-  const isEmpty = data.transactions.length === 0 && data.holdings.length === 0
+  const isEmpty = data.transactions.length === 0 && data.holdings.length === 0 && data.fds.length === 0
 
   return (
     <div className="app">

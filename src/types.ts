@@ -19,6 +19,16 @@ export interface Holding {
   currentValue: number
 }
 
+/** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */
+export interface FixedDeposit {
+  id: string
+  bank: string
+  principal: number
+  rate: number // % per year
+  startDate: string // YYYY-MM-DD
+  maturityDate: string // YYYY-MM-DD
+}
+
 export type RiskTolerance = 'conservative' | 'moderate' | 'aggressive'
 
 export interface Profile {
@@ -36,6 +46,7 @@ export interface AppData {
   transactions: Transaction[]
   budgets: Record<string, number> // expense category -> monthly limit
   holdings: Holding[]
+  fds: FixedDeposit[]
   profile: Profile
 }
 
@@ -58,7 +69,7 @@ export const INCOME_CATEGORIES = ['Salary', 'Business', 'Freelance', 'Interest /
 
 export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
   equity: 'Equity (stocks, equity MFs)',
-  debt: 'Debt (FDs, PPF, EPF, bonds, debt MFs)',
+  debt: 'Debt (PPF, EPF, bonds, debt MFs)',
   gold: 'Gold (SGB, gold ETFs)',
   cash: 'Cash (savings, liquid funds)',
   realEstate: 'Real estate',
@@ -69,6 +80,7 @@ export const DEFAULT_DATA: AppData = {
   transactions: [],
   budgets: {},
   holdings: [],
+  fds: [],
   profile: {
     age: 30,
     riskTolerance: 'moderate',
