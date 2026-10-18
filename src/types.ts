@@ -11,12 +11,22 @@ export interface Transaction {
 
 export type AssetClass = 'equity' | 'debt' | 'gold' | 'cash' | 'realEstate' | 'other'
 
+/** A fixed monthly investment, added to the holding automatically on `day` of each month. */
+export interface Sip {
+  amount: number
+  day: number // 1–28
+  lastApplied: string // YYYY-MM of the latest instalment already included in the holding
+}
+
 export interface Holding {
   id: string
   name: string
   assetClass: AssetClass
   invested: number
   currentValue: number
+  /** When the user last entered the current value (YYYY-MM-DD). */
+  valueUpdated?: string
+  sip?: Sip
 }
 
 /** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */

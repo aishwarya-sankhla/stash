@@ -14,7 +14,7 @@ describe('parseData', () => {
         ],
         holdings: [
           { id: 'h1', name: 'Coin', assetClass: 'crypto', invested: 1, currentValue: 1 },
-          { id: 'h2', name: 'Index fund', assetClass: 'equity', invested: 10, currentValue: 12 },
+          { id: 'h2', name: 'Index fund', assetClass: 'equity', invested: 10, currentValue: 12, sip: { amount: 500, day: 31, lastApplied: '2026-09' } },
         ],
         fds: [
           { id: 'f1', bank: 'SBI', principal: 100000, rate: 7.1, startDate: '2026-01-01', maturityDate: '2027-01-01' },
@@ -30,6 +30,7 @@ describe('parseData', () => {
       { id: 'd', date: '2026-10-03', type: 'income', category: 'Salary', amount: 5000, note: '' },
     ])
     expect(data.holdings.map((h) => h.id)).toEqual(['h2'])
+    expect(data.holdings[0].sip).toBeUndefined() // day 31 isn't a valid SIP day; the holding itself is kept
     expect(data.fds.map((f) => f.id)).toEqual(['f1'])
     expect(data.budgets).toEqual({ Dining: 6000 })
     expect(data.profile).toMatchObject({ age: 30, riskTolerance: 'moderate', confirmed: true })

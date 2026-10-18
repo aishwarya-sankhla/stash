@@ -1,4 +1,5 @@
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { applySips, isoDate } from './finance'
 import { newId } from './format'
 import {
   ASSET_CLASS_LABELS,
@@ -10,6 +11,7 @@ import {
   type Holding,
   type FixedDeposit,
   type Profile,
+  type Sip,
   type Transaction,
 } from './types'
 
@@ -51,6 +53,7 @@ const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null 
 const list = (v: unknown) => (Array.isArray(v) ? v : [])
 const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const text = (v: unknown) => (typeof v === 'string' ? v : '')
+const DATE = /^\d{4}-\d{2}-\d{2}$/
 
 function toTransaction(v: unknown): Transaction | null {
   if (!isObject(v)) return null
@@ -70,10 +73,22 @@ function toHolding(v: unknown): Holding | null {
   const assetClass = text(v.assetClass)
   if (!text(v.name) || invested === null || invested < 0 || currentValue === null || currentValue < 0) return null
   if (!Object.hasOwn(ASSET_CLASS_LABELS, assetClass)) return null
-  return { id: text(v.id) || newId(), name: text(v.name), assetClass: assetClass as AssetClass, invested, currentValue }
+  const holding: Holding = { id: text(v.id) || newId(), name: text(v.name), assetClass: assetClass as AssetClass, invested, currentValue }
+  if (DATE.test(text(v.valueUpdated))) holding.valueUpdated = text(v.valueUpdated)
+  const sip = toSip(v.sip)
+  if (sip) holding.sip = sip
+  return holding
 }
 
-const DATE = /^\d{4}-\d{2}-\d{2}$/
+function toSip(v: unknown): Sip | null {
+  if (!isObject(v)) return null
+  const amount = finite(v.amount)
+  const day = finite(v.day)
+  const lastApplied = text(v.lastApplied)
+  if (amount === null || amount <= 0 || day === null || !Number.isInteger(day) || day < 1 || day > 28) return null
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(lastApplied)) return null
+  return { amount, day, lastApplied }
+}
 
 function toFixedDeposit(v: unknown): FixedDeposit | null {
   if (!isObject(v)) return null
@@ -130,12 +145,12 @@ function load(): AppData {
   if (desktop) {
     const result = desktop.load()
     desktopDataPath = result.path
-    return result.json ? parseData(result.json) : DEFAULT_DATA
+    return result.json ? applySips(parseData(result.json), isoDate()) : DEFAULT_DATA
   }
   const raw = localStorage.getItem(STORAGE_KEY)
   if (!raw) return DEFAULT_DATA
   try {
-    return parseData(raw)
+    return applySips(parseData(raw), isoDate())
   } catch {
     return DEFAULT_DATA
   }
@@ -144,6 +159,12 @@ function load(): AppData {
 /** App state, saved on every change: to the data file in the desktop app, else to localStorage. */
 export function useAppData() {
   const [data, setData] = useState<AppData>(load)
+  useEffect(() => {
+    // SIPs are applied on load; also catch instalments that fall due while the app stays open.
+    const catchUp = () => setData((d) => applySips(d, isoDate()))
+    window.addEventListener('focus', catchUp)
+    return () => window.removeEventListener('focus', catchUp)
+  }, [])
   useEffect(() => {
     if (desktop) desktop.save(serialize(data)).catch((err) => alert(`Couldn't save your data file:\n${err}`))
     else localStorage.setItem(STORAGE_KEY, JSON.stringify(data))

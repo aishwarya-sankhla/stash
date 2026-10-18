@@ -1,4 +1,4 @@
-import type { AppData, AssetClass, FixedDeposit, Transaction } from './types'
+import type { AppData, AssetClass, FixedDeposit, Holding, Transaction } from './types'
 
 /** 'YYYY-MM' for a date string or Date. */
 export function monthKey(date: string | Date): string {
@@ -39,6 +39,43 @@ export function lastMonths(endMonth: string, count: number): string[] {
 
 export function previousMonth(month: string): string {
   return lastMonths(month, 2)[0]
+}
+
+export function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return monthKey(new Date(y, m, 1))
+}
+
+/** The instalment month already covered when a SIP is set up today: this month if its day has passed, else last month. */
+export function sipCoveredMonth(today: string, day: number): string {
+  const month = today.slice(0, 7)
+  return Number(today.slice(8)) >= day ? month : previousMonth(month)
+}
+
+/** Money added to a holding at cost: invested and current value both grow by `amount`. */
+export const addMoney = (h: Holding, amount: number): Holding => ({ ...h, invested: h.invested + amount, currentValue: h.currentValue + amount })
+
+/**
+ * Adds every SIP instalment that has fallen due since it was last applied, up to `today`.
+ * Returns the same object when nothing is due, so callers can skip saving.
+ */
+export function applySips(data: AppData, today: string): AppData {
+  const month = today.slice(0, 7)
+  const day = Number(today.slice(8))
+  let changed = false
+  const holdings = data.holdings.map((h) => {
+    if (!h.sip) return h
+    let { lastApplied } = h.sip
+    let due = 0
+    for (let m = nextMonth(lastApplied); m <= month && !(m === month && day < h.sip.day); m = nextMonth(m)) {
+      due += h.sip.amount
+      lastApplied = m
+    }
+    if (due === 0) return h
+    changed = true
+    return { ...addMoney(h, due), sip: { ...h.sip, lastApplied } }
+  })
+  return changed ? { ...data, holdings } : data
 }
 
 export interface MonthSummary {

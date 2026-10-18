@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReport, targetAllocation } from './advisor'
-import { fdValue, lastMonths, savingStreak } from './finance'
+import { applySips, fdValue, lastMonths, savingStreak, sipCoveredMonth } from './finance'
 import { DEFAULT_DATA, type AppData, type Holding, type Transaction } from './types'
 
 const tx = (date: string, type: Transaction['type'], amount: number, category = 'Other'): Transaction => ({
@@ -41,6 +41,30 @@ describe('savingStreak', () => {
     ]
     expect(savingStreak(txs, '2026-10')).toBe(2)
     expect(savingStreak([], '2026-10')).toBe(0)
+  })
+})
+
+describe('SIPs', () => {
+  const sipHolding = (lastApplied: string): Holding => ({
+    ...holding('equity', 100000),
+    invested: 80000,
+    sip: { amount: 5000, day: 10, lastApplied },
+  })
+
+  it('adds each instalment once its day arrives, across a year boundary, and is idempotent', () => {
+    const start = data({ holdings: [sipHolding('2025-11')] })
+    // Dec and Jan are due by 9 Feb; Feb's instalment (day 10) is not yet
+    const feb9 = applySips(start, '2026-02-09')
+    expect(feb9.holdings[0]).toMatchObject({ invested: 90000, currentValue: 110000, sip: { lastApplied: '2026-01' } })
+    expect(applySips(feb9, '2026-02-09')).toBe(feb9)
+    expect(applySips(feb9, '2026-02-10').holdings[0]).toMatchObject({ invested: 95000, currentValue: 115000, sip: { lastApplied: '2026-02' } })
+  })
+
+  it('treats this month as already invested when a SIP is set up after its day', () => {
+    expect(sipCoveredMonth('2026-10-18', 5)).toBe('2026-10')
+    expect(sipCoveredMonth('2026-10-18', 18)).toBe('2026-10')
+    expect(sipCoveredMonth('2026-10-18', 25)).toBe('2026-09')
+    expect(sipCoveredMonth('2026-01-03', 5)).toBe('2025-12')
   })
 })
 

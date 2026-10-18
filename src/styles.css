@@ -239,6 +239,19 @@ input[type='checkbox'] { width: 1.15rem; height: 1.15rem; accent-color: var(--in
 .fd-value { text-align: right; font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
 .fd-value .chip-sub { font-family: var(--body); }
 .tag.neutral { background: var(--sunk); color: var(--ink-2); }
+.holding-row { grid-template-columns: minmax(0, 1fr) auto auto auto auto !important; }
+.chip-sub.stale { color: #b45309; }
+button.icon.manage { opacity: 1; color: var(--ink-2); transition: transform 0.2s, background 0.15s; }
+button.icon.manage:hover { color: var(--ink); background: var(--sunk); }
+button.icon.manage.open { transform: rotate(180deg); }
+.holding-panel {
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;
+  padding: 0.9rem 1rem; margin-top: 0.2rem; border-radius: 14px; background: var(--field); border: 1px solid var(--line);
+}
+.panel-group { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.panel-group input { width: 8.5rem; }
+.panel-label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-right: 0.2rem; }
+.panel-note { flex-basis: 100%; margin: 0; }
 .pill-stat { padding: 0.55rem 1rem; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
 .pill-stat strong { font-family: var(--display); }
 .budget-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }

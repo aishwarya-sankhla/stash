@@ -1,12 +1,13 @@
-import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { fdValue, isoDate, totalsByClass } from '../finance'
 import { formatINR, formatPct, newId } from '../format'
 import type { SetData } from '../store'
-import { ASSET_CLASS_LABELS, type AppData, type AssetClass } from '../types'
+import { ASSET_CLASS_LABELS, type AppData, type AssetClass, type Holding } from '../types'
 import { FixedDeposits } from './FixedDeposits'
-import { ASSET_STYLE, IconTile, MoneyInput, PageHeader, Stat, TINTS } from './ui'
+import { HoldingRow } from './HoldingRow'
+import { ASSET_STYLE, PageHeader, Stat, TINTS } from './ui'
 
 const CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
 const shortLabel = (c: AssetClass) => ASSET_CLASS_LABELS[c].split(' (')[0]
@@ -24,15 +25,14 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
     if (!name.trim() || !(inv >= 0) || !(cur >= 0)) return
     setData((d) => ({
       ...d,
-      holdings: [...d.holdings, { id: newId(), name: name.trim(), assetClass, invested: inv, currentValue: cur }],
+      holdings: [...d.holdings, { id: newId(), name: name.trim(), assetClass, invested: inv, currentValue: cur, valueUpdated: isoDate() }],
     }))
     setName('')
     setInvested('')
     setCurrentValue('')
   }
 
-  const updateValue = (id: string, value: number) =>
-    setData((d) => ({ ...d, holdings: d.holdings.map((h) => (h.id === id ? { ...h, currentValue: value } : h)) }))
+  const updateHolding = (updated: Holding) => setData((d) => ({ ...d, holdings: d.holdings.map((h) => (h.id === updated.id ? updated : h)) }))
   const remove = (id: string) => setData((d) => ({ ...d, holdings: d.holdings.filter((h) => h.id !== id) }))
 
   const today = isoDate()
@@ -71,37 +71,15 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
         <section className="card">
           <div className="card-head">
             <h2>Holdings</h2>
-            <span className="muted small">Edit "worth now" to keep values fresh</span>
+            <span className="muted small">Click a value to update it · ⌄ to add money or set up a SIP</span>
           </div>
           {data.holdings.length === 0 ? (
             <p className="empty">No holdings yet. Cash holdings count as your emergency fund.</p>
           ) : (
             <ul className="tx-list">
-              {data.holdings.map((h) => {
-                const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
-                const [icon, tint] = ASSET_STYLE[h.assetClass]
-                return (
-                  <li key={h.id}>
-                    <span className="chip">
-                      <IconTile icon={icon} tint={tint} size="sm" />
-                      <span>
-                        {h.name}
-                        <span className="chip-sub">
-                          {shortLabel(h.assetClass)} · {formatINR(h.invested)} invested
-                        </span>
-                      </span>
-                    </span>
-                    <span className={`tag ${ret >= 0 ? 'ok' : 'over'}`}>
-                      {ret >= 0 ? '+' : ''}
-                      {formatPct(ret)}
-                    </span>
-                    <MoneyInput value={h.currentValue} onCommit={(n) => updateValue(h.id, n)} label={`${h.name} current value`} />
-                    <button className="icon" title="Delete" onClick={() => remove(h.id)}>
-                      <X size={15} />
-                    </button>
-                  </li>
-                )
-              })}
+              {data.holdings.map((h) => (
+                <HoldingRow key={h.id} holding={h} today={today} onChange={updateHolding} onRemove={() => remove(h.id)} />
+              ))}
             </ul>
           )}
         </section>

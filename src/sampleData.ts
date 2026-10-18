@@ -1,4 +1,4 @@
-import { isoDate, lastMonths, monthKey } from './finance'
+import { isoDate, lastMonths, monthKey, sipCoveredMonth } from './finance'
 import { newId } from './format'
 import type { AppData, Transaction } from './types'
 
@@ -35,13 +35,13 @@ export function sampleData(today = new Date()): AppData {
     transactions,
     budgets: { Groceries: 12000, Dining: 6000, Shopping: 8000, Entertainment: 3000, Transport: 5500 },
     holdings: [
-      { id: newId(), name: 'Nifty 50 index fund', assetClass: 'equity', invested: 420000, currentValue: 545000 },
-      { id: newId(), name: 'Flexi-cap mutual fund', assetClass: 'equity', invested: 250000, currentValue: 301000 },
-      { id: newId(), name: 'Direct stocks', assetClass: 'equity', invested: 150000, currentValue: 162000 },
-      { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000 },
-      { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000 },
-      { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000 },
-      { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000 },
+      { id: newId(), name: 'Nifty 50 index fund', assetClass: 'equity', invested: 420000, currentValue: 545000, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 5, lastApplied: sipCoveredMonth(isoDate(today), 5) } },
+      { id: newId(), name: 'Flexi-cap mutual fund', assetClass: 'equity', invested: 250000, currentValue: 301000, valueUpdated: shiftDays(today, -12), sip: { amount: 5000, day: 25, lastApplied: sipCoveredMonth(isoDate(today), 25) } },
+      { id: newId(), name: 'Direct stocks', assetClass: 'equity', invested: 150000, currentValue: 162000, valueUpdated: shiftDays(today, -75) },
+      { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000 , valueUpdated: shiftDays(today, -12) },
+      { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000 , valueUpdated: shiftDays(today, -12) },
+      { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000 , valueUpdated: shiftDays(today, -12) },
+      { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000 , valueUpdated: shiftDays(today, -12) },
     ],
     fds: [
       { id: newId(), bank: 'SBI', principal: 200000, rate: 7.1, startDate: shiftDays(today, -345), maturityDate: shiftDays(today, 20) },

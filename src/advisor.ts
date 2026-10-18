@@ -35,6 +35,7 @@ export interface AdvisorReport {
 
 export const EMERGENCY_MONTHS = 6
 export const DRIFT_THRESHOLD = 0.05
+export const STALE_VALUE_DAYS = 60
 const GOLD_PCT = 10
 
 /**
@@ -193,6 +194,18 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
         detail: `Every asset class is within ${formatPct(DRIFT_THRESHOLD)} of target. Review again in 6–12 months.`,
       })
     }
+  }
+
+  // --- Holding values going stale ----------------------------------------------
+  const stale = data.holdings.filter((h) => !h.valueUpdated || daysBetween(h.valueUpdated, today) > STALE_VALUE_DAYS)
+  if (stale.length > 0) {
+    const names = stale.map((h) => h.name)
+    add({
+      id: 'stale-values',
+      severity: 'tip',
+      title: `Update the value of ${stale.length} holding${stale.length === 1 ? '' : 's'}`,
+      detail: `${names.slice(0, 3).join(', ')}${names.length > 3 ? ` and ${names.length - 3} more` : ''} ${stale.length === 1 ? "hasn't" : "haven't"} been updated in over 2 months. Check your fund app or statement and enter today's values on the Investments tab so your net worth and advice stay accurate.`,
+    })
   }
 
   // --- FDs maturing soon -------------------------------------------------------
