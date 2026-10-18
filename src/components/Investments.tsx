@@ -1,12 +1,14 @@
+import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import { totalsByClass } from '../finance'
 import { formatINR, formatPct, newId } from '../format'
 import type { SetData } from '../store'
 import { ASSET_CLASS_LABELS, type AppData, type AssetClass } from '../types'
-import { COLORS, Stat } from './ui'
+import { ASSET_STYLE, IconTile, MoneyInput, PageHeader, Stat, TINTS } from './ui'
 
 const CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
+const shortLabel = (c: AssetClass) => ASSET_CLASS_LABELS[c].split(' (')[0]
 
 export function Investments({ data, setData }: { data: AppData; setData: SetData }) {
   const [name, setName] = useState('')
@@ -36,100 +38,100 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
   const totalValue = data.holdings.reduce((s, h) => s + h.currentValue, 0)
   const gain = totalValue - totalInvested
   const byClass = totalsByClass(data.holdings)
-  const pie = CLASSES.filter((c) => byClass[c] > 0).map((c) => ({ name: ASSET_CLASS_LABELS[c].split(' (')[0], value: byClass[c] }))
+  const mix = CLASSES.filter((c) => byClass[c] > 0).map((c) => ({ cls: c, name: shortLabel(c), value: byClass[c] }))
 
   return (
     <div className="stack">
-      <h1>Investments</h1>
+      <PageHeader eyebrow="Portfolio" title="Investments" />
       <div className="stats">
-        <Stat label="Current value" value={formatINR(totalValue)} />
-        <Stat label="Invested" value={formatINR(totalInvested)} />
-        <Stat
-          label="Gain / loss"
-          value={`${formatINR(gain)}${totalInvested > 0 ? ` (${formatPct(gain / totalInvested)})` : ''}`}
-          tone={gain >= 0 ? 'pos' : 'neg'}
-        />
+        <Stat label="Current value" value={formatINR(totalValue)} icon={Gem} tint="lilac" />
+        <Stat label="Invested" value={formatINR(totalInvested)} icon={PiggyBank} tint="sky" />
+        <Stat label="Total return" value={formatINR(gain)} icon={gain >= 0 ? TrendingUp : TrendingDown} tint={gain >= 0 ? 'mint' : 'rose'} tone={gain >= 0 ? 'pos' : 'neg'}>
+          {totalInvested > 0 && <div className="stat-foot">{formatPct(gain / totalInvested)} all time</div>}
+        </Stat>
       </div>
-      <form className="card form-row" onSubmit={submit}>
-        <input placeholder="Holding name (e.g. Nifty 50 index fund)" value={name} onChange={(e) => setName(e.target.value)} required />
-        <select value={assetClass} onChange={(e) => setAssetClass(e.target.value as AssetClass)}>
+      <form className="card composer" onSubmit={submit}>
+        <input className="grow" placeholder="Holding name, e.g. Nifty 50 index fund" value={name} onChange={(e) => setName(e.target.value)} required />
+        <select value={assetClass} onChange={(e) => setAssetClass(e.target.value as AssetClass)} aria-label="Asset class">
           {CLASSES.map((c) => (
             <option key={c} value={c}>
               {ASSET_CLASS_LABELS[c]}
             </option>
           ))}
         </select>
-        <input type="number" min="0" step="any" placeholder="Invested (₹)" value={invested} onChange={(e) => setInvested(e.target.value)} required />
-        <input type="number" min="0" step="any" placeholder="Current value (₹)" value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} />
+        <input type="number" min="0" step="any" placeholder="Invested ₹" value={invested} onChange={(e) => setInvested(e.target.value)} required />
+        <input type="number" min="0" step="any" placeholder="Worth now ₹" value={currentValue} onChange={(e) => setCurrentValue(e.target.value)} />
         <button className="primary" type="submit">
-          Add
+          <Plus size={16} strokeWidth={2.6} /> Add
         </button>
       </form>
-      <div className="grid2">
+      <div className="grid-wide">
         <section className="card">
-          <h2>Holdings</h2>
+          <div className="card-head">
+            <h2>Holdings</h2>
+            <span className="muted small">Edit "worth now" to keep values fresh</span>
+          </div>
           {data.holdings.length === 0 ? (
-            <p className="muted">No holdings yet. Cash holdings count towards your emergency fund.</p>
+            <p className="empty">No holdings yet. Cash holdings count as your emergency fund.</p>
           ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th className="num">Invested</th>
-                  <th className="num">Current value</th>
-                  <th className="num">Return</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {data.holdings.map((h) => {
-                  const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
-                  return (
-                    <tr key={h.id}>
-                      <td>
+            <ul className="tx-list">
+              {data.holdings.map((h) => {
+                const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
+                const [icon, tint] = ASSET_STYLE[h.assetClass]
+                return (
+                  <li key={h.id}>
+                    <span className="chip">
+                      <IconTile icon={icon} tint={tint} size="sm" />
+                      <span>
                         {h.name}
-                        <div className="muted small">{ASSET_CLASS_LABELS[h.assetClass].split(' (')[0]}</div>
-                      </td>
-                      <td className="num">{formatINR(h.invested)}</td>
-                      <td className="num">
-                        <input
-                          className="inline-num"
-                          type="number"
-                          min="0"
-                          value={h.currentValue}
-                          onChange={(e) => updateValue(h.id, Number(e.target.value) || 0)}
-                          title="Update current value"
-                        />
-                      </td>
-                      <td className={`num ${ret >= 0 ? 'pos' : 'neg'}`}>{formatPct(ret)}</td>
-                      <td className="num">
-                        <button className="icon" title="Delete" onClick={() => remove(h.id)}>
-                          ✕
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                        <span className="chip-sub">
+                          {shortLabel(h.assetClass)} · {formatINR(h.invested)} invested
+                        </span>
+                      </span>
+                    </span>
+                    <span className={`tag ${ret >= 0 ? 'ok' : 'over'}`}>
+                      {ret >= 0 ? '+' : ''}
+                      {formatPct(ret)}
+                    </span>
+                    <MoneyInput value={h.currentValue} onCommit={(n) => updateValue(h.id, n)} label={`${h.name} current value`} />
+                    <button className="icon" title="Delete" onClick={() => remove(h.id)}>
+                      <X size={15} />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </section>
         <section className="card">
-          <h2>Asset mix</h2>
-          {pie.length === 0 ? (
-            <p className="muted">Add holdings to see your asset mix.</p>
+          <div className="card-head">
+            <h2>Asset mix</h2>
+          </div>
+          {mix.length === 0 ? (
+            <p className="empty">Add holdings to see your mix.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie data={pie} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                  {pie.map((_, i) => (
-                    <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(v) => `${formatINR(Number(v))} (${formatPct(Number(v) / totalValue)})`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={mix} dataKey="value" nameKey="name" innerRadius={62} outerRadius={92} paddingAngle={2} cornerRadius={5} stroke="none">
+                    {mix.map((m) => (
+                      <Cell key={m.cls} fill={TINTS[ASSET_STYLE[m.cls][1]].chart} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => formatINR(Number(v))} contentStyle={{ borderRadius: 12, border: '1px solid #E9E4DA' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <ul className="legend-list">
+                {mix.map((m) => (
+                  <li key={m.cls}>
+                    <span className="legend-dot" style={{ background: TINTS[ASSET_STYLE[m.cls][1]].chart }} />
+                    <span className="legend-name">{m.name}</span>
+                    <span className="legend-amt">{formatINR(m.value)}</span>
+                    <span className="legend-pct">{formatPct(m.value / totalValue)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </section>
       </div>

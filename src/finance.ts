@@ -58,6 +58,20 @@ export function monthlyAverages(transactions: Transaction[], currentMonth: strin
   return { income: total.income / months.length, expenses: total.expenses / months.length, monthsUsed: months.length }
 }
 
+/**
+ * Consecutive completed months, counting back from last month, in which you
+ * saved at least `minRate` of your income. The current, partial month is ignored.
+ */
+export function savingStreak(transactions: Transaction[], currentMonth: string, minRate = 0.2): number {
+  let streak = 0
+  for (let month = previousMonth(currentMonth); ; month = previousMonth(month)) {
+    const s = summarizeMonth(transactions, month)
+    const rate = savingsRate(s.income, s.expenses)
+    if (rate === null || rate < minRate) return streak
+    streak++
+  }
+}
+
 export function totalsByClass(holdings: Holding[]): Record<AssetClass, number> {
   const totals: Record<AssetClass, number> = { equity: 0, debt: 0, gold: 0, cash: 0, realEstate: 0, other: 0 }
   for (const h of holdings) totals[h.assetClass] += h.currentValue

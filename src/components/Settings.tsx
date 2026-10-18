@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { sampleData } from '../sampleData'
 import { parseData, type SetData } from '../store'
 import { DEFAULT_DATA, type AppData, type Profile, type RiskTolerance } from '../types'
+import { PageHeader } from './ui'
 
 export function Settings({ data, setData }: { data: AppData; setData: SetData }) {
   const fileInput = useRef<HTMLInputElement>(null)
@@ -36,9 +37,9 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
 
   return (
     <div className="stack">
-      <h1>Settings</h1>
+      <PageHeader eyebrow="Preferences" title="Settings" />
       <section className="card">
-        <h2>Your profile</h2>
+        <h2>About you</h2>
         <p className="muted small">The advisor uses this to tailor recommendations.</p>
         <div className="form-grid">
           <label>
@@ -78,7 +79,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
         </div>
       </section>
       <section className="card">
-        <h2>Data</h2>
+        <h2>Your data</h2>
         <p className="muted small">
           Everything is stored in this browser only. Export a backup regularly, or to move your data to another device.
         </p>

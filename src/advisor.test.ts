@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReport, targetAllocation } from './advisor'
-import { lastMonths } from './finance'
+import { lastMonths, savingStreak } from './finance'
 import { DEFAULT_DATA, type AppData, type Holding, type Transaction } from './types'
 
 const tx = (date: string, type: Transaction['type'], amount: number, category = 'Other'): Transaction => ({
@@ -23,6 +23,24 @@ const data = (overrides: Partial<AppData>): AppData => ({ ...DEFAULT_DATA, ...ov
 describe('lastMonths', () => {
   it('crosses year boundaries', () => {
     expect(lastMonths('2026-01', 3)).toEqual(['2025-11', '2025-12', '2026-01'])
+  })
+})
+
+describe('savingStreak', () => {
+  it('counts consecutive 20%+ months back from last month, stopping at the first miss', () => {
+    const txs = [
+      tx('2026-06-01', 'income', 100000),
+      tx('2026-06-02', 'expense', 50000), // 50%, but June is cut off by July's miss
+      tx('2026-07-01', 'income', 100000),
+      tx('2026-07-02', 'expense', 81000), // 19%: breaks the streak
+      tx('2026-08-01', 'income', 100000),
+      tx('2026-08-02', 'expense', 80000), // exactly 20% counts
+      tx('2026-09-01', 'income', 100000),
+      tx('2026-09-02', 'expense', 30000),
+      tx('2026-10-01', 'expense', 999999), // current month is ignored
+    ]
+    expect(savingStreak(txs, '2026-10')).toBe(2)
+    expect(savingStreak([], '2026-10')).toBe(0)
   })
 })
 

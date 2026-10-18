@@ -1,3 +1,4 @@
+import { ArrowLeftRight, LayoutGrid, LineChart, Settings as SettingsIcon, Sparkles, Target, type LucideIcon } from 'lucide-react'
 import { useState } from 'react'
 import { Advisor } from './components/Advisor'
 import { Budgets } from './components/Budgets'
@@ -6,43 +7,49 @@ import { Investments } from './components/Investments'
 import { Settings } from './components/Settings'
 import { Transactions } from './components/Transactions'
 import { monthKey } from './finance'
+import { sampleData } from './sampleData'
 import { useAppData } from './store'
 
-const TABS = ['Dashboard', 'Transactions', 'Budgets', 'Investments', 'Advisor', 'Settings'] as const
-type Tab = (typeof TABS)[number]
+const TABS: { name: string; icon: LucideIcon }[] = [
+  { name: 'Overview', icon: LayoutGrid },
+  { name: 'Transactions', icon: ArrowLeftRight },
+  { name: 'Budgets', icon: Target },
+  { name: 'Investments', icon: LineChart },
+  { name: 'Advisor', icon: Sparkles },
+  { name: 'Settings', icon: SettingsIcon },
+]
 
 export default function App() {
   const [data, setData] = useAppData()
-  const [tab, setTab] = useState<Tab>('Dashboard')
+  const [tab, setTab] = useState('Overview')
   const currentMonth = monthKey(new Date())
   const isEmpty = data.transactions.length === 0 && data.holdings.length === 0
 
   return (
     <div className="app">
       <header className="topbar">
-        <div className="brand">
-          <span className="logo">₹</span> Stash
-          <span className="tagline">Finance tracker &amp; advisor</span>
+        <div className="wordmark">
+          stash<span className="dot">.</span>
         </div>
-        <nav>
-          {TABS.map((t) => (
-            <button key={t} className={t === tab ? 'tab active' : 'tab'} onClick={() => setTab(t)}>
-              {t}
+        <nav className="nav">
+          {TABS.map(({ name, icon: Icon }) => (
+            <button key={name} className={name === tab ? 'nav-item active' : 'nav-item'} onClick={() => setTab(name)}>
+              <Icon size={16} strokeWidth={2.2} />
+              <span>{name}</span>
             </button>
           ))}
         </nav>
       </header>
-      <main>
+      <main key={tab} className="page">
         {isEmpty && tab !== 'Settings' && (
           <div className="banner">
-            No data yet. Add transactions and investments, or{' '}
-            <button className="link" onClick={() => setTab('Settings')}>
-              load sample data
-            </button>{' '}
-            to explore.
+            <span>Your stash is empty. Add a few transactions and holdings, or explore with sample data.</span>
+            <button className="primary" onClick={() => setData(sampleData())}>
+              Load sample data
+            </button>
           </div>
         )}
-        {tab === 'Dashboard' && <Dashboard data={data} currentMonth={currentMonth} />}
+        {tab === 'Overview' && <Dashboard data={data} currentMonth={currentMonth} />}
         {tab === 'Transactions' && <Transactions data={data} setData={setData} />}
         {tab === 'Budgets' && <Budgets data={data} setData={setData} currentMonth={currentMonth} />}
         {tab === 'Investments' && <Investments data={data} setData={setData} />}
