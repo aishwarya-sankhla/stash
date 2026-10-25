@@ -2,7 +2,7 @@ import { ChevronDown, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { addMoney, daysBetween, nextMonth, sipCoveredMonth } from '../finance'
 import { formatDate, formatINR, formatPct } from '../format'
-import { ASSET_CLASS_LABELS, type Holding } from '../types'
+import { ASSET_CLASS_LABELS, type AssetClass, type Holding } from '../types'
 import { ASSET_STYLE, IconTile, MoneyInput } from './ui'
 
 const STALE_DAYS = 60
@@ -21,6 +21,26 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
   const [topUp, setTopUp] = useState('')
   const [sipAmount, setSipAmount] = useState(h.sip ? String(h.sip.amount) : '')
   const [sipDay, setSipDay] = useState(h.sip?.day ?? 5)
+  const [name, setName] = useState(h.name)
+  const [assetClass, setAssetClass] = useState(h.assetClass)
+  const [invested, setInvested] = useState(String(h.invested))
+
+  function toggle() {
+    // Start from the latest values: SIPs and value updates change the holding while the panel is closed.
+    if (!open) {
+      setName(h.name)
+      setAssetClass(h.assetClass)
+      setInvested(String(h.invested))
+    }
+    setOpen(!open)
+  }
+
+  function saveDetails(e: FormEvent) {
+    e.preventDefault()
+    const amount = Number(invested)
+    if (!name.trim() || !(amount >= 0) || invested === '') return
+    onChange({ ...h, name: name.trim(), assetClass, invested: amount })
+  }
 
   const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
   const [icon, tint] = ASSET_STYLE[h.assetClass]
@@ -70,7 +90,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
         <MoneyInput value={h.currentValue} onCommit={(n) => onChange({ ...h, currentValue: n, valueUpdated: today })} label={`${h.name} current value`} />
         <span className={`chip-sub ${updated.stale ? 'stale' : ''}`}>{updated.text}</span>
       </span>
-      <button className={`icon manage ${open ? 'open' : ''}`} title="Add money or set up a SIP" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button className={`icon manage ${open ? 'open' : ''}`} title="Edit, add money or set up a SIP" aria-expanded={open} onClick={toggle}>
         <ChevronDown size={16} />
       </button>
       <button className="icon" title="Delete" onClick={onRemove}>
@@ -78,6 +98,22 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
       </button>
       {open && (
         <div className="holding-panel">
+          <form className="panel-group" onSubmit={saveDetails}>
+            <span className="panel-label">Details</span>
+            <input className="name-input" value={name} onChange={(e) => setName(e.target.value)} required aria-label={`${h.name} name`} />
+            <select value={assetClass} onChange={(e) => setAssetClass(e.target.value as AssetClass)} aria-label={`${h.name} asset class`}>
+              {Object.entries(ASSET_CLASS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <label className="inline-field">
+              Invested ₹
+              <input type="number" min="0" step="any" value={invested} onChange={(e) => setInvested(e.target.value)} required aria-label={`${h.name} invested`} />
+            </label>
+            <button type="submit">Save</button>
+          </form>
           <form className="panel-group" onSubmit={addTopUp}>
             <span className="panel-label">Add money</span>
             <input type="number" min="1" step="any" placeholder="Amount ₹" value={topUp} onChange={(e) => setTopUp(e.target.value)} aria-label={`Add money to ${h.name}`} />

@@ -23,9 +23,9 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 ## What Stash does
 
 - **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category, six-month trend.
-- **Transactions**: add, search and delete income and expenses, or import expenses logged on an iPhone.
+- **Transactions**: add, edit, search and delete income and expenses, or import expenses logged on an iPhone. Hover over a row and click the pencil to edit it.
 - **Budgets**: monthly limits per expense category.
-- **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix.
+- **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button.
 - **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). The logic is in `src/advisor.ts`.
 - **Settings**: your profile for the advisor, the data file location, iPhone import, export/import and sample data.
 

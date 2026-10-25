@@ -1,9 +1,9 @@
-import { Plus, Search, X } from 'lucide-react'
+import { Pencil, Plus, Search, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { isoDate, monthKey } from '../finance'
 import { formatINR, newId } from '../format'
 import type { SetData } from '../store'
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, type AppData, type TxType } from '../types'
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, type AppData, type Transaction, type TxType } from '../types'
 import { CategoryChip, MonthPicker, PageHeader, celebrate } from './ui'
 
 const EXPENSE_QUIPS = ['Logged. No judgement.', 'Tracked and filed.', 'Noted. Onwards.', 'Into the books it goes.']
@@ -14,6 +14,54 @@ const pick = (xs: string[]) => xs[Math.floor(Math.random() * xs.length)]
 const formatDay = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 
+/** A transaction row switched into an inline form. Enter saves, Escape cancels. */
+function TxEditor({ tx, onSave, onCancel }: { tx: Transaction; onSave: (t: Transaction) => void; onCancel: () => void }) {
+  const [type, setType] = useState(tx.type)
+  const [amount, setAmount] = useState(String(tx.amount))
+  const [category, setCategory] = useState(tx.category)
+  const [date, setDate] = useState(tx.date)
+  const [note, setNote] = useState(tx.note)
+  const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+
+  function changeType(t: TxType) {
+    setType(t)
+    const list = t === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
+    if (!list.includes(category)) setCategory(list[0])
+  }
+
+  function save(e: FormEvent) {
+    e.preventDefault()
+    const value = Number(amount)
+    if (!(value > 0) || !date) return
+    onSave({ ...tx, type, amount: value, category, date, note: note.trim() })
+  }
+
+  return (
+    <li className="editing">
+      <form className="tx-edit" onSubmit={save} onKeyDown={(e) => e.key === 'Escape' && onCancel()}>
+        <select value={type} onChange={(e) => changeType(e.target.value as TxType)} aria-label="Type">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+        </select>
+        <input type="number" min="1" step="any" value={amount} onChange={(e) => setAmount(e.target.value)} required aria-label="Amount" autoFocus />
+        <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Category">
+          {categories.map((c) => (
+            <option key={c}>{c}</option>
+          ))}
+        </select>
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required aria-label="Date" />
+        <input className="grow" placeholder="Note" value={note} onChange={(e) => setNote(e.target.value)} aria-label="Note" />
+        <button className="primary" type="submit">
+          Save
+        </button>
+        <button type="button" onClick={onCancel}>
+          Cancel
+        </button>
+      </form>
+    </li>
+  )
+}
+
 export function Transactions({ data, setData }: { data: AppData; setData: SetData }) {
   const [type, setType] = useState<TxType>('expense')
   const [date, setDate] = useState(() => isoDate())
@@ -23,6 +71,7 @@ export function Transactions({ data, setData }: { data: AppData; setData: SetDat
   const [month, setMonth] = useState(monthKey(new Date()))
   const [query, setQuery] = useState('')
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
 
   const categories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES
 
@@ -48,6 +97,10 @@ export function Transactions({ data, setData }: { data: AppData; setData: SetDat
   }
 
   const remove = (id: string) => setData((d) => ({ ...d, transactions: d.transactions.filter((t) => t.id !== id) }))
+  function saveEdit(updated: Transaction) {
+    setData((d) => ({ ...d, transactions: d.transactions.map((t) => (t.id === updated.id ? updated : t)) }))
+    setEditing(null)
+  }
 
   const q = query.trim().toLowerCase()
   const rows = data.transactions
@@ -99,19 +152,28 @@ export function Transactions({ data, setData }: { data: AppData; setData: SetDat
           <p className="empty">Quiet month. No transactions yet.</p>
         ) : (
           <ul className="tx-list">
-            {rows.map((t) => (
-              <li key={t.id}>
-                <CategoryChip category={t.category} sub={t.note || undefined} />
-                <span className="tx-date">{formatDay(t.date)}</span>
-                <span className={`tx-amt ${t.type === 'income' ? 'pos' : ''}`}>
-                  {t.type === 'income' ? '+' : '−'}
-                  {formatINR(t.amount)}
-                </span>
-                <button className="icon" title="Delete" onClick={() => remove(t.id)}>
-                  <X size={15} />
-                </button>
-              </li>
-            ))}
+            {rows.map((t) =>
+              editing === t.id ? (
+                <TxEditor key={t.id} tx={t} onSave={saveEdit} onCancel={() => setEditing(null)} />
+              ) : (
+                <li key={t.id}>
+                  <CategoryChip category={t.category} sub={t.note || undefined} />
+                  <span className="tx-date">{formatDay(t.date)}</span>
+                  <span className={`tx-amt ${t.type === 'income' ? 'pos' : ''}`}>
+                    {t.type === 'income' ? '+' : '−'}
+                    {formatINR(t.amount)}
+                  </span>
+                  <span className="row-actions">
+                    <button className="icon edit" title="Edit" onClick={() => setEditing(t.id)}>
+                      <Pencil size={14} />
+                    </button>
+                    <button className="icon" title="Delete" onClick={() => remove(t.id)}>
+                      <X size={15} />
+                    </button>
+                  </span>
+                </li>
+              ),
+            )}
           </ul>
         )}
       </section>

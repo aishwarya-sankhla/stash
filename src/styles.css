@@ -362,3 +362,15 @@ button.icon.manage.open { transform: rotate(180deg); }
 .guide ol { padding-left: 1.3rem; margin: 0.3rem 0 0.5rem; display: grid; gap: 0.3rem; }
 .app-version { text-align: center; margin: 0.5rem 0 0; }
 .subhead { font-size: 1rem; margin: 1.3rem 0 0.2rem; }
+
+/* ---------- Editing ---------- */
+.row-actions { display: inline-flex; gap: 0.1rem; }
+button.icon.edit:hover { color: var(--ink); background: var(--sunk); }
+button.icon:focus-visible { opacity: 1; }
+.tx-list li.editing { display: block; background: var(--field); }
+.tx-edit { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.tx-edit input[type='number'] { width: 8rem; }
+.tx-edit .grow { flex: 1 1 160px; }
+.fd-form.editing { background: var(--field); border: 1px solid var(--line); border-radius: 16px; padding: 0.7rem; }
+.holding-panel .name-input { width: 15rem; }
+.inline-field { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; color: var(--muted); }
