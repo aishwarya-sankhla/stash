@@ -73,6 +73,7 @@ export const EXPENSE_CATEGORIES = [
   'Rent',
   'Groceries',
   'Dining',
+  'Ordering in',
   'Transport',
   'Utilities',
   'Shopping',
