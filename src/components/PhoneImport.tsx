@@ -169,21 +169,24 @@ export function PhoneImport({ data, setData }: { data: AppData; setData: SetData
             <b>Choose from List</b>: prompt <i>Category</i>.
           </li>
           <li>
+            <b>Set Variable</b>: name <b>Category</b>, set to the item chosen in the list.
+          </li>
+          <li>
             <b>Ask for Input</b>: type <b>Text</b>, prompt <i>Note</i>.
           </li>
           <li>
             <b>Set Variable</b>: name <b>Note</b>, set to <i>Provided Input</i>.
           </li>
           <li>
-            <b>Text</b>: insert the variables so it reads <code>Current Date | Amount | Chosen Item | Note</code>. Tap <i>Current Date</i> → Date Format{' '}
+            <b>Text</b>: insert the variables so it reads <code>Current Date | Amount | Category | Note</code> (Current Date is in the variable strip above the keyboard; swipe it or tap Variables). Tap <i>Current Date</i> → Date Format{' '}
             <b>Custom</b> → <code>yyyy-MM-dd HH:mm:ss</code>.
           </li>
           <li>
-            <b>Append to Text File</b>: append <i>Text</i>, file path <code>Stash expenses.txt</code>. Tap the folder and choose <b>On My iPhone → Stash</b>.
+            <b>Append to Text File</b>: append <i>Text</i>, file path <code>Stash expenses.txt</code>. If the action lets you tap a folder, choose <b>On My iPhone → Stash</b>. If it doesn't, it saves to a <b>Shortcuts</b> folder: after a test run, search Files for <i>Stash expenses</i> to see where. In iCloud Drive it will sync to iCloud, so turn on Advanced Data Protection to keep it end-to-end encrypted.
             Leave <b>Make New Line</b> on.
           </li>
           <li>
-            Optional: <b>Show Notification</b> <i>Saved ₹Amount</i>.
+            Optional: <b>Show Notification</b> <i>Spent ₹Amount on Category</i>.
           </li>
         </ol>
         <p>
@@ -192,7 +195,7 @@ export function PhoneImport({ data, setData }: { data: AppData; setData: SetData
         <h3>3. Send your expenses to the Mac (weekly, or whenever you like)</h3>
         <ol>
           <li>
-            Files → On My iPhone → Stash → long-press <b>Stash expenses</b> → <b>Share</b> → <b>AirDrop</b> → your Mac. Check the device name before tapping.
+            Files → the folder where the file is saved → long-press <b>Stash expenses</b> → <b>Share</b> → <b>AirDrop</b> → your Mac. Check the device name before tapping.
           </li>
           <li>
             On the Mac it lands in Downloads. Click <b>Import iPhone expenses…</b> above, choose it, review, and add.
