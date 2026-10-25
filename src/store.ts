@@ -86,6 +86,7 @@ function toHolding(v: unknown): Holding | null {
   if (!Object.hasOwn(ASSET_CLASS_LABELS, assetClass)) return null
   const holding: Holding = { id: text(v.id) || newId(), name: text(v.name), assetClass: assetClass as AssetClass, invested, currentValue }
   if (DATE.test(text(v.valueUpdated))) holding.valueUpdated = text(v.valueUpdated)
+  if (/^IN[A-Z0-9]{10}$/.test(text(v.isin))) holding.isin = text(v.isin)
   const sip = toSip(v.sip)
   if (sip) holding.sip = sip
   return holding

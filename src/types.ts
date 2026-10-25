@@ -27,6 +27,8 @@ export interface Holding {
   /** When the user last entered the current value (YYYY-MM-DD). */
   valueUpdated?: string
   sip?: Sip
+  /** Set when the holding was imported from a CAS statement, so later imports update it. */
+  isin?: string
 }
 
 /** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */

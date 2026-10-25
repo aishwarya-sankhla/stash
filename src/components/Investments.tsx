@@ -5,6 +5,7 @@ import { fdValue, isoDate, totalsByClass } from '../finance'
 import { formatINR, formatPct, newId } from '../format'
 import type { SetData } from '../store'
 import { ASSET_CLASS_LABELS, type AppData, type AssetClass, type Holding } from '../types'
+import { CasImport } from './CasImport'
 import { FixedDeposits } from './FixedDeposits'
 import { HoldingRow } from './HoldingRow'
 import { ASSET_STYLE, PageHeader, Stat, TINTS } from './ui'
@@ -67,6 +68,7 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
           <Plus size={16} strokeWidth={2.6} /> Add
         </button>
       </form>
+      <CasImport data={data} setData={setData} />
       <div className="grid-wide">
         <section className="card">
           <div className="card-head">

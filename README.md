@@ -17,6 +17,9 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
   - [Shortcut 1: Add expense](#shortcut-1-add-expense)
   - [Shortcut 2: Send expenses](#shortcut-2-send-expenses)
   - [Import into Stash](#import-into-stash)
+- [Update mutual funds from your CAS](#update-mutual-funds-from-your-cas)
+  - [Get your CAS](#get-your-cas)
+  - [Import it](#import-it)
 - [Development](#development)
   - [Desktop builds](#desktop-builds)
 
@@ -25,8 +28,8 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 - **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category, six-month trend.
 - **Transactions**: add, edit, search and delete income and expenses, or import expenses logged on an iPhone. Hover over a row and click the pencil to edit it.
 - **Budgets**: monthly limits per expense category.
-- **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button.
-- **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). The logic is in `src/advisor.ts`.
+- **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).
+- **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). **Goals** (such as a car or house down payment) have a target amount and date. You link the holdings that fund each goal, and Stash shows whether you're on track, how much to invest each month, and a safer mix as the date gets closer. Money linked to a goal is kept out of the emergency fund and the long-term mix. The logic is in `src/advisor.ts` and `src/goals.ts`.
 - **Settings**: your profile for the advisor, the data file location, iPhone import, export/import and sample data.
 
 The advisor gives general, rule-based guidance, not personalised financial advice.
@@ -156,6 +159,27 @@ Do this weekly, or whenever you like.
 4. Click **Move the file to Trash**.
 
 If you forget to delete the file on the phone, send it again next time: Stash recognises entries it has already imported and skips them.
+
+## Update mutual funds from your CAS
+
+Instead of typing in each fund's value, import your Consolidated Account Statement (CAS). It's a PDF that lists every mutual fund you hold across all fund houses, with units, cost and current value. Stash reads it on your computer; nothing is uploaded.
+
+### Get your CAS
+
+1. Go to [camsonline.com](https://www.camsonline.com) → **Investors** → **Statements** → **CAS – CAMS+KFintech** (or use [mfs.kfintech.com](https://mfs.kfintech.com)).
+2. Choose **Detailed** (not Summary), pick a period ending today, and enter your email and a password for the PDF.
+3. The statement arrives by email within a few minutes.
+
+Only the detailed CAS from CAMS or KFintech is supported. The NSDL/CDSL demat CAS and the summary CAS won't import.
+
+### Import it
+
+1. Go to **Investments** → **Import CAS statement…** and pick the PDF.
+2. Enter the password you set when requesting it. Stash doesn't save it.
+3. Check the preview. Each fund is matched to an existing holding by ISIN, or else by name (a Direct plan is never matched with a Regular one). For each fund choose **Update** an existing holding, **Add as new holding**, or **Skip**.
+4. Click **Import**. Each updated holding gets the invested amount, current value and NAV date from the statement. Any SIP instalments due after the statement date are added back on top.
+
+Stash's CAS reader has only been tested on sample statements. If a fund is missing or shows the wrong figures, check the preview before importing, and enter that fund by hand.
 
 ## Development
 

@@ -1,6 +1,6 @@
 {
   "name": "finance-tracker",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -81,5 +81,8 @@
       "onlyLoadAppFromAsar": true
     }
   },
-  "desktopName": "stash.desktop"
+  "desktopName": "stash.desktop",
+  "dependencies": {
+    "pdfjs-dist": "^6.4.299"
+  }
 }
