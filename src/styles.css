@@ -374,3 +374,20 @@ button.icon:focus-visible { opacity: 1; }
 .fd-form.editing { background: var(--field); border: 1px solid var(--line); border-radius: 16px; padding: 0.7rem; }
 .holding-panel .name-input { width: 15rem; }
 .inline-field { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.86rem; color: var(--muted); }
+
+/* ---------- Goals ---------- */
+.goal-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.8rem; }
+.goal { border: 1px solid var(--line); border-radius: 16px; padding: 0.9rem 1rem; display: grid; gap: 0.55rem; }
+.goal:hover button.icon { opacity: 1; }
+.goal-head { display: flex; align-items: center; gap: 0.7rem; }
+.goal-title { display: grid; flex: 1; min-width: 0; }
+.goal-title strong { font-family: var(--display); font-size: 1.05rem; }
+.goal-facts { display: flex; flex-wrap: wrap; gap: 0.35rem 1.4rem; font-size: 0.9rem; color: var(--ink-2); }
+.goal-facts b { font-variant-numeric: tabular-nums; }
+.goal-form { border: 1px solid var(--line); background: var(--field); border-radius: 16px; padding: 0.9rem 1rem; display: grid; gap: 0.8rem; margin-bottom: 0.8rem; }
+.goal-form-fields { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: flex-end; }
+.goal-form-fields .grow { flex: 1 1 200px; }
+.goal-form-fields input[type='number'] { width: 10rem; }
+.goal-links { display: flex; flex-wrap: wrap; gap: 0.4rem 0.6rem; align-items: center; }
+.goal-link { display: inline-flex; align-items: center; gap: 0.4rem; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 0.3rem 0.7rem; font-size: 0.88rem; cursor: pointer; }
+.goal-link.taken { opacity: 0.55; cursor: not-allowed; }

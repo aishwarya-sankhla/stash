@@ -10,6 +10,7 @@ import {
   type AssetClass,
   type Holding,
   type FixedDeposit,
+  type Goal,
   type NetWorthSnapshot,
   type Profile,
   type Sip,
@@ -58,7 +59,7 @@ export async function openDataFile() {
 }
 
 type Json = Record<string, unknown>
-const STASH_KEYS = ['transactions', 'holdings', 'fds', 'budgets', 'profile', 'netWorth']
+const STASH_KEYS = ['transactions', 'holdings', 'fds', 'budgets', 'profile', 'netWorth', 'goals']
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 const list = (v: unknown) => (Array.isArray(v) ? v : [])
 const finite = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
@@ -127,6 +128,17 @@ function toNetWorth(v: unknown): NetWorthSnapshot[] {
   return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month))
 }
 
+function toGoal(v: unknown, holdingIds: Set<string>): Goal | null {
+  if (!isObject(v)) return null
+  const name = text(v.name).trim().slice(0, 80)
+  const target = finite(v.target)
+  const targetDate = text(v.targetDate)
+  if (!name || target === null || target <= 0 || !/^\d{4}-(0[1-9]|1[0-2])$/.test(targetDate)) return null
+  // Only holdings that exist, each counted once.
+  const linked = [...new Set(list(v.holdingIds).filter((id): id is string => typeof id === 'string' && holdingIds.has(id)))]
+  return { id: text(v.id) || newId(), name, target, targetDate, holdingIds: linked }
+}
+
 function toProfile(v: unknown): Profile {
   const p = isObject(v) ? v : {}
   const d = DEFAULT_DATA.profile
@@ -156,12 +168,15 @@ export function parseData(json: string): AppData {
       if (EXPENSE_CATEGORIES.includes(category) && n !== null && n > 0) budgets[category] = n
     }
   }
+  const holdings = list(parsed.holdings).map(toHolding).filter((h) => h !== null)
+  const holdingIds = new Set(holdings.map((h) => h.id))
   return {
     transactions: list(parsed.transactions).map(toTransaction).filter((t) => t !== null),
     budgets,
-    holdings: list(parsed.holdings).map(toHolding).filter((h) => h !== null),
+    holdings,
     fds: list(parsed.fds).map(toFixedDeposit).filter((f) => f !== null),
     netWorth: toNetWorth(parsed.netWorth),
+    goals: list(parsed.goals).map((g) => toGoal(g, holdingIds)).filter((g) => g !== null),
     profile: toProfile(parsed.profile),
   }
 }

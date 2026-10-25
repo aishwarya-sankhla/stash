@@ -70,7 +70,7 @@ function dailyBackup() {
 }
 
 const looksLikeStashData = (d) =>
-  d !== null && typeof d === 'object' && !Array.isArray(d) && ['transactions', 'holdings', 'fds', 'budgets', 'profile', 'netWorth'].some((k) => k in d)
+  d !== null && typeof d === 'object' && !Array.isArray(d) && ['transactions', 'holdings', 'fds', 'budgets', 'profile', 'netWorth', 'goals'].some((k) => k in d)
 
 /** Returns the file's JSON text, or null if it doesn't exist. Throws if it exists but isn't Stash data. */
 function readJson(file) {

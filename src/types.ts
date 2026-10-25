@@ -59,6 +59,15 @@ export interface NetWorthSnapshot {
   byClass: Record<AssetClass, number>
 }
 
+/** Money set aside for a dated target, such as a car or a wedding, funded by the linked holdings. */
+export interface Goal {
+  id: string
+  name: string
+  target: number
+  targetDate: string // YYYY-MM
+  holdingIds: string[]
+}
+
 export interface AppData {
   transactions: Transaction[]
   budgets: Record<string, number> // expense category -> monthly limit
@@ -66,6 +75,7 @@ export interface AppData {
   fds: FixedDeposit[]
   /** One snapshot per month, oldest first, recorded automatically whenever the data changes. */
   netWorth: NetWorthSnapshot[]
+  goals: Goal[]
   profile: Profile
 }
 
@@ -102,6 +112,7 @@ export const DEFAULT_DATA: AppData = {
   holdings: [],
   fds: [],
   netWorth: [],
+  goals: [],
   profile: {
     age: 30,
     riskTolerance: 'moderate',

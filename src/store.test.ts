@@ -23,6 +23,11 @@ describe('parseData', () => {
         ],
         budgets: { Dining: 6000, constructor: 5, Rent: -1, Shopping: '9000' },
         profile: { age: 'old', riskTolerance: 'yolo', confirmed: true },
+        goals: [
+          { id: 'g1', name: 'Car', target: 600000, targetDate: '2029-04', holdingIds: ['h2', 'h1', 'gone', 'h2'] },
+          { id: 'g2', name: 'Bad date', target: 1000, targetDate: '2029-13', holdingIds: [] },
+          { id: 'g3', name: '', target: 1000, targetDate: '2029-01', holdingIds: [] },
+        ],
         netWorth: [
           { month: '2026-09', byClass: { equity: 300, debt: 200 } },
           { month: '2026-13', total: 1, byClass: { equity: 1 } },
@@ -40,6 +45,8 @@ describe('parseData', () => {
     expect(data.fds.map((f) => f.id)).toEqual(['f1'])
     expect(data.budgets).toEqual({ Dining: 6000 })
     expect(data.profile).toMatchObject({ age: 30, riskTolerance: 'moderate', confirmed: true })
+    // Goals keep only links to holdings that survived parsing (h1 was dropped), once each
+    expect(data.goals).toEqual([{ id: 'g1', name: 'Car', target: 600000, targetDate: '2029-04', holdingIds: ['h2'] }])
     // Invalid months dropped, totals recomputed from valid class values, one entry per month (last wins), sorted
     const zero = { equity: 0, debt: 0, gold: 0, cash: 0, realEstate: 0, other: 0 }
     expect(data.netWorth).toEqual([

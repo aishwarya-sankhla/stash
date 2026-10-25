@@ -1,5 +1,6 @@
 import { daysBetween, fdValue, isoDate, monthlyAverages, savingsRate, summarizeMonth, totalsByClass } from './finance'
-import { formatDate, formatINR, formatPct } from './format'
+import { formatDate, formatINR, formatMonth, formatPct } from './format'
+import { formatTimeLeft, goalStatus, type GoalStatus } from './goals'
 import type { AppData, Profile } from './types'
 
 export type Severity = 'critical' | 'warning' | 'tip' | 'good'
@@ -31,6 +32,7 @@ export interface AdvisorReport {
   currentAllocation: Allocation | null
   portfolioValue: number
   monthlyPlan: PlanItem[]
+  goals: GoalStatus[]
 }
 
 export const EMERGENCY_MONTHS = 6
@@ -139,8 +141,16 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     })
   }
 
+  // --- Goals ------------------------------------------------------------------
+  // Holdings linked to a goal are that goal's money: they don't count towards the emergency fund
+  // or the long-term mix, which would otherwise push dated money into equity by age.
+  const target = targetAllocation(profile)
+  const goals = data.goals.map((g) => goalStatus(g, data, currentMonth, target.equity))
+  const goalHoldingIds = new Set(goals.flatMap((g) => g.holdings.map((h) => h.id)))
+  const longTerm = { ...data, holdings: data.holdings.filter((h) => !goalHoldingIds.has(h.id)) }
+
   // --- Emergency fund ------------------------------------------------------
-  const classTotals = totalsByClass(data, today)
+  const classTotals = totalsByClass(longTerm, today)
   const emergencyTarget = avg.expenses * EMERGENCY_MONTHS
   const emergencyCurrent = classTotals.cash
   const emergencyShortfall = Math.max(0, emergencyTarget - emergencyCurrent)
@@ -163,7 +173,6 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
   }
 
   // --- Asset allocation ------------------------------------------------------
-  const target = targetAllocation(profile)
   const portfolioValue = classTotals.equity + classTotals.debt + classTotals.gold
   let currentAllocation: Allocation | null = null
   if (portfolioValue > 0) {
@@ -192,6 +201,44 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
         severity: 'good',
         title: 'Portfolio is close to target allocation',
         detail: `Every asset class is within ${formatPct(DRIFT_THRESHOLD)} of target. Review again in 6–12 months.`,
+      })
+    }
+  }
+
+  for (const g of goals) {
+    const name = `"${g.goal.name}"`
+    const by = formatMonth(g.goal.targetDate)
+    if (g.monthsLeft < 0) {
+      add({ id: `goal-${g.goal.id}`, severity: 'tip', title: `Goal ${name} date has passed`, detail: 'Delete it if it is done, or move its date.' })
+      continue
+    }
+    if (g.onTrack) {
+      add({
+        id: `goal-${g.goal.id}`,
+        severity: 'good',
+        title: `Goal ${name} is on track`,
+        detail:
+          g.current >= g.goal.target
+            ? `You already have ${formatINR(g.current)} of ${formatINR(g.goal.target)}.`
+            : `Your linked SIPs of ${formatINR(g.sipTotal)}/month cover the ${formatINR(g.needed)}/month needed to reach ${formatINR(g.goal.target)} by ${by}.`,
+      })
+    } else {
+      add({
+        id: `goal-${g.goal.id}`,
+        severity: 'warning',
+        title: `Goal ${name} needs ${formatINR(g.needed)} a month`,
+        detail: `To grow ${formatINR(g.current)} to ${formatINR(g.goal.target)} by ${by}, invest about ${formatINR(g.needed)} a month (assuming ${+(g.assumedReturn * 100).toFixed(1)}% a year). The holdings linked to it have SIPs of ${formatINR(g.sipTotal)}/month: add a SIP to one of them, or link another holding.`,
+      })
+    }
+    if (g.currentEquity !== null && g.currentEquity > g.suggestedEquity + 0.15) {
+      add({
+        id: `goal-risk-${g.goal.id}`,
+        severity: 'warning',
+        title: `Goal ${name} is riskier than its timeline`,
+        detail:
+          g.monthsLeft < 12
+            ? `It's ${formatTimeLeft(g.monthsLeft)} away but ${formatPct(g.currentEquity)} is in equity. Move the equity part into an arbitrage or liquid fund so a market fall can't shrink it before you need it.`
+            : `It's ${formatTimeLeft(g.monthsLeft)} away: aim for about ${formatPct(g.suggestedEquity)} in equity, but it's ${formatPct(g.currentEquity)} now. Direct new money for this goal to arbitrage or debt funds.`,
       })
     }
   }
@@ -242,7 +289,7 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     }
   }
 
-  // --- Monthly plan: emergency fund → debt → investments ---------------------
+  // --- Monthly plan: emergency fund → debt → goals → investments --------------
   const monthlyPlan: PlanItem[] = []
   let remaining = Math.max(0, surplus)
   if (remaining > 0 && emergencyShortfall > 0) {
@@ -254,6 +301,12 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     const payment = Math.min(remaining, profile.highInterestDebt)
     monthlyPlan.push({ label: 'Extra debt repayment', amount: payment })
     remaining -= payment
+  }
+  for (const g of goals) {
+    if (remaining <= 0 || g.monthsLeft < 0 || g.needed <= 0) continue
+    const amount = Math.min(remaining, g.needed)
+    monthlyPlan.push({ label: `Goal: ${g.goal.name}`, amount })
+    remaining -= amount
   }
   if (remaining > 0) {
     monthlyPlan.push({ label: 'Equity SIP (index / flexi-cap funds)', amount: remaining * target.equity })
@@ -275,5 +328,6 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     currentAllocation,
     portfolioValue,
     monthlyPlan,
+    goals,
   }
 }

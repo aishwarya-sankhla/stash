@@ -1,4 +1,4 @@
-import { isoDate, lastMonths, monthKey, sipCoveredMonth, totalsByClass } from './finance'
+import { isoDate, lastMonths, monthKey, nextMonth, sipCoveredMonth, totalsByClass } from './finance'
 import { newId } from './format'
 import type { AppData, AssetClass, FixedDeposit, Holding, NetWorthSnapshot, Transaction } from './types'
 
@@ -38,6 +38,7 @@ export function sampleData(today = new Date()): AppData {
     { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000, valueUpdated: shiftDays(today, -12) },
     { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000, valueUpdated: shiftDays(today, -12) },
     { id: newId(), name: 'Sovereign Gold Bonds', assetClass: 'gold', invested: 60000, currentValue: 84000, valueUpdated: shiftDays(today, -12) },
+    { id: 'sample-car-fund', name: 'Arbitrage fund (car fund)', assetClass: 'debt', invested: 150000, currentValue: 156500, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 10, lastApplied: sipCoveredMonth(isoDate(today), 10) } },
     { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000, valueUpdated: shiftDays(today, -12) },
   ]
   const fds: FixedDeposit[] = [
@@ -58,12 +59,16 @@ export function sampleData(today = new Date()): AppData {
     return { month, total: Object.values(byClass).reduce((s, v) => s + v, 0), byClass }
   })
 
+  let carDate = currentMonth
+  for (let i = 0; i < 30; i++) carDate = nextMonth(carDate)
+
   return {
     transactions,
     budgets: { Groceries: 12000, Dining: 6000, Shopping: 8000, Entertainment: 3000, Transport: 5500 },
     holdings,
     fds,
     netWorth,
+    goals: [{ id: newId(), name: 'Car down payment', target: 600000, targetDate: carDate, holdingIds: ['sample-car-fund'] }],
     profile: {
       age: 31,
       riskTolerance: 'moderate',

@@ -1,7 +1,9 @@
 import { ArrowDownRight, ArrowUpRight, Eye, LifeBuoy, Lightbulb, Percent, PartyPopper, Siren, type LucideIcon } from 'lucide-react'
 import { buildReport, type PortfolioClass, type Severity } from '../advisor'
 import { formatINR, formatPct } from '../format'
+import type { SetData } from '../store'
 import type { AppData } from '../types'
+import { Goals } from './Goals'
 import { IconTile, PageHeader, Progress, Stat, type Tint } from './ui'
 
 const SEVERITY: Record<Severity, { label: string; icon: LucideIcon; tint: Tint }> = {
@@ -12,7 +14,7 @@ const SEVERITY: Record<Severity, { label: string; icon: LucideIcon; tint: Tint }
 }
 const CLASSES: PortfolioClass[] = ['equity', 'debt', 'gold']
 
-export function Advisor({ data, currentMonth, onSetupProfile }: { data: AppData; currentMonth: string; onSetupProfile: () => void }) {
+export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data: AppData; setData: SetData; currentMonth: string; onSetupProfile: () => void }) {
   const r = buildReport(data, currentMonth)
   const planTotal = r.monthlyPlan.reduce((s, p) => s + p.amount, 0)
   const counts = r.advice.reduce<Partial<Record<Severity, number>>>((acc, a) => ({ ...acc, [a.severity]: (acc[a.severity] ?? 0) + 1 }), {})
@@ -41,6 +43,8 @@ export function Advisor({ data, currentMonth, onSetupProfile }: { data: AppData;
           )}
         </Stat>
       </div>
+
+      <Goals data={data} setData={setData} statuses={r.goals} />
 
       <section className="card">
         <div className="card-head">
@@ -98,7 +102,7 @@ export function Advisor({ data, currentMonth, onSetupProfile }: { data: AppData;
               </ul>
             </>
           )}
-          <p className="muted small">Emergency fund first, then high-interest debt, then investments split by your target mix.</p>
+          <p className="muted small">Emergency fund first, then high-interest debt, then your goals, then long-term investments split by your target mix.</p>
         </section>
         <section className="card">
           <div className="card-head">
@@ -127,11 +131,11 @@ export function Advisor({ data, currentMonth, onSetupProfile }: { data: AppData;
           <div className="legend-inline">
             <i style={{ background: 'var(--ink)' }} /> Now <b className="target-mark" /> Target
           </div>
-          <p className="muted small">Excludes cash (your emergency fund) and real estate.</p>
+          <p className="muted small">Long-term money only: excludes cash (your emergency fund), real estate and holdings linked to goals.</p>
         </section>
       </div>
       <p className="disclaimer">
-        General, rule-based guidance, not personalised financial advice. It doesn't account for taxes, goals or specific products. Talk to a SEBI-registered investment adviser before big decisions.
+        General, rule-based guidance, not personalised financial advice. It doesn't account for taxes or specific products. Talk to a SEBI-registered investment adviser before big decisions.
       </p>
     </div>
   )
