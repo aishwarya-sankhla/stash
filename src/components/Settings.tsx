@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { version } from '../../package.json'
 import { sampleData } from '../sampleData'
 import { desktop, desktopDataPath, moveDataFile, openDataFile, parseData, type SetData } from '../store'
 import { DEFAULT_DATA, type AppData, type Profile, type RiskTolerance } from '../types'
@@ -151,6 +152,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
         </div>
         {message && <p className="muted">{message}</p>}
       </section>
+      <p className="muted small app-version">Stash v{version}</p>
     </div>
   )
 }
