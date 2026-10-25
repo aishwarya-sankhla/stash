@@ -2,6 +2,26 @@
 
 An offline app for tracking income, expenses, budgets and investments (in ₹), with a rule-based advisor. Your data stays in a file on your own computer: nothing is sent anywhere, and the app works without internet.
 
+## Contents
+
+- [What Stash does](#what-stash-does)
+- [Install](#install)
+  - [Mac](#mac)
+  - [Windows](#windows)
+  - [Linux](#linux)
+  - [Where your data lives](#where-your-data-lives)
+- [Other ways to install](#other-ways-to-install)
+  - [Build it yourself on a Mac](#build-it-yourself-on-a-mac)
+  - [Browser version (no install)](#browser-version-no-install)
+- [Log expenses on your iPhone](#log-expenses-on-your-iphone)
+  - [Shortcut 1: Add expense](#shortcut-1-add-expense)
+  - [Shortcut 2: Send expenses](#shortcut-2-send-expenses)
+  - [Import into Stash](#import-into-stash)
+- [Development](#development)
+  - [Desktop builds](#desktop-builds)
+
+## What Stash does
+
 - **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category, six-month trend.
 - **Transactions**: add, search and delete income and expenses, or import expenses logged on an iPhone.
 - **Budgets**: monthly limits per expense category.
@@ -50,6 +70,34 @@ Make the AppImage executable (`chmod +x Stash-*.AppImage`) and run it.
 
 Every change is saved straight away to `Documents/Stash/stash-data.json` (on Linux without a Documents folder, `~/Stash/stash-data.json`). **Settings → Data file** shows the path and lets you move it or open another file. Back it up like any other file. Updating or replacing the app never touches it.
 
+## Other ways to install
+
+[Releases](#install) is the easiest way. These are the alternatives.
+
+### Build it yourself on a Mac
+
+Build the app from this repository's code instead of downloading it. You need **Node.js**: if Terminal says `command not found: npm`, install the LTS version from [nodejs.org](https://nodejs.org) first.
+
+1. Get the code: on this repository's page, click **Code → Download ZIP** and unzip it, or run `git clone https://github.com/aishwarya-sankhla/stash.git`.
+2. In Terminal, go into that folder and run:
+   ```sh
+   npm install
+   npm run dist:mac
+   ```
+3. The finished app appears in the `release` folder. Drag **Stash** into Applications. An app built on your own Mac usually doesn't need the `xattr` step from the [Mac](#mac) instructions; run it if macOS refuses to open the app.
+
+The first build takes about 5 minutes. After an update, download the code again and repeat steps 2–3.
+
+To try it without packaging, run `npm install` and then `npm run desktop`. Stash opens straight from the code, but only while Terminal stays open.
+
+### Browser version (no install)
+
+`Stash.html` is attached to each release. Download it and double-click to open it in your browser. It runs offline with no server or internet.
+
+- Your data is stored **inside that browser**, not in `stash-data.json`. Clearing browser data can wipe it, and it doesn't share data with the desktop app.
+- Use the same browser each time, and back up with **Settings → Export JSON**.
+- It's good for trying Stash out; use the desktop app for your main copy.
+
 ## Log expenses on your iPhone
 
 Log spending on your phone with a Shortcut, AirDrop the file to your Mac, and import it into Stash. No internet is needed, and Stash shows a preview before adding anything and skips entries it has already imported.
@@ -60,9 +108,9 @@ Each expense is saved as one line in a text file called `Stash expenses.txt`:
 2026-10-25 14:03:22 | 250 | Groceries | Milk and bread
 ```
 
-### Shortcut 1: "Add expense" (set up once)
+### Shortcut 1: Add expense
 
-Open the **Shortcuts** app → **+** → rename it **Add expense**. Add these actions in order, using **Search for actions** at the bottom:
+Set this up once. Open the **Shortcuts** app → **+** → rename it **Add expense**. Add these actions in order, using **Search for actions** at the bottom:
 
 1. **Ask for Input**: change *Text* to **Number**; prompt `Amount (₹)`.
 2. **Set Variable**: name `Amount` (it should say *to Provided Input*).
@@ -86,9 +134,9 @@ Tap **Done**. Then long-press the shortcut → **Share** (or **Details**) → **
 
 **Privacy:** check where the file is. In **On My iPhone → Shortcuts**, it stays on your phone. In **iCloud Drive → Shortcuts**, it syncs to iCloud. To keep it on the phone, turn off iCloud Drive for the Shortcuts app (Settings → your name → iCloud → iCloud Drive). Otherwise, turn on **Advanced Data Protection** so iCloud Drive is end-to-end encrypted. Also set AirDrop to **Contacts Only** and keep a passcode on your phone.
 
-### Shortcut 2: "Send expenses" (one tap to AirDrop)
+### Shortcut 2: Send expenses
 
-Shortcuts → **+** → rename it **Send expenses**, then add:
+This sends the file to your Mac with one tap. Shortcuts → **+** → rename it **Send expenses**, then add:
 
 1. **Get File from Folder**: file path `Stash expenses.txt`, from the **Shortcuts** folder. Under Show More, keep **Error If Not Found** on.
 2. **AirDrop**: it should read *AirDrop File*.
@@ -96,7 +144,9 @@ Shortcuts → **+** → rename it **Send expenses**, then add:
 
 Add it to your Home Screen too.
 
-### Import into Stash (weekly, or whenever you like)
+### Import into Stash
+
+Do this weekly, or whenever you like.
 
 1. Tap **Send expenses** on your iPhone and choose your Mac. Only tap **Delete** when it asks if the Mac received the file (it lands in **Downloads**).
 2. In Stash: **Settings → Expenses from your iPhone → Import iPhone expenses…** and choose the file. The name may end in a number, such as `Stash expenses 2.txt`; that's fine.
@@ -113,7 +163,7 @@ React 19 + TypeScript + Vite, with Electron for the desktop app.
 npm install
 npm run dev      # start the dev server
 npm test         # unit tests
-npm run build    # typecheck + build; also writes Stash.html
+npm run build    # typecheck + build; also writes Stash.html (see Browser version above)
 ```
 
 In an Amp orb, `amp orb services ensure` starts the app from `.amp/services.yaml` and prints a portal URL.
@@ -128,7 +178,3 @@ npm run dist:mac    # release/Stash-<version>.dmg (run on a Mac)
 ```
 
 To build the Mac app on Linux instead: `npm run build && npx electron-builder --mac dir --arm64 --x64`, then ad-hoc sign each `Stash.app` with [rcodesign](https://github.com/indygreg/apple-platform-rs) (`rcodesign sign release/mac-arm64/Stash.app`) and zip it with `zip -ry` to keep symlinks. Apple Silicon Macs won't run an unsigned app.
-
-### Browser version
-
-`npm run build` also produces `Stash.html`: a single self-contained file with all code, styles and fonts inlined. Open it by double-clicking; it needs no server and no internet. Data lives in that browser's localStorage, so keep using the same browser and use Settings → Export JSON for backups.
