@@ -7,4 +7,6 @@ contextBridge.exposeInMainWorld('stashDesktop', {
   moveTo: (json) => ipcRenderer.invoke('stash:moveTo', json),
   openFile: () => ipcRenderer.invoke('stash:openFile'),
   reveal: () => ipcRenderer.invoke('stash:reveal'),
+  pickExpenses: () => ipcRenderer.invoke('stash:pickExpenses'),
+  trashExpenses: () => ipcRenderer.invoke('stash:trashExpenses'),
 })

@@ -27,6 +27,10 @@ interface StashDesktop {
   moveTo(json: string): Promise<string | null>
   openFile(): Promise<{ path: string; json: string } | null>
   reveal(): Promise<void>
+  /** Opens a file picker for an iPhone expense file (.txt, at most 1 MB). */
+  pickExpenses(): Promise<{ name: string; text: string } | null>
+  /** Moves the last picked expense file to the Trash. */
+  trashExpenses(): Promise<boolean>
 }
 export const desktop = (globalThis as { stashDesktop?: StashDesktop }).stashDesktop
 

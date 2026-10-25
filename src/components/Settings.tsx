@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { sampleData } from '../sampleData'
 import { desktop, desktopDataPath, moveDataFile, openDataFile, parseData, type SetData } from '../store'
 import { DEFAULT_DATA, type AppData, type Profile, type RiskTolerance } from '../types'
+import { PhoneImport } from './PhoneImport'
 import { PageHeader } from './ui'
 
 export function Settings({ data, setData }: { data: AppData; setData: SetData }) {
@@ -121,6 +122,7 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
           </div>
         </section>
       )}
+      <PhoneImport data={data} setData={setData} />
       <section className="card">
         <h2>Your data</h2>
         <p className="muted small">

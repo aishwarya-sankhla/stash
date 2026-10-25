@@ -7,11 +7,13 @@ const { pathToFileURL } = require('node:url')
 const configFile = () => path.join(app.getPath('userData'), 'config.json')
 const defaultDataFile = () => path.join(app.getPath('documents'), 'Stash', 'stash-data.json')
 const JSON_FILTER = [{ name: 'Stash data', extensions: ['json'] }]
+const MAX_EXPENSES_BYTES = 1024 * 1024 // matches MAX_PHONE_FILE_BYTES in src/phoneImport.ts
 const indexFile = path.join(__dirname, '..', 'dist', 'index.html')
 const pageUrl = process.env.STASH_DEV_URL || pathToFileURL(indexFile).href
 
 let win
 let dataFile
+let expensesFile = null // the iPhone expense file the user last picked; the only file the UI can ask to trash
 
 function readConfig() {
   try {
@@ -110,6 +112,32 @@ handle('stash:openFile', async () => {
 })
 
 handle('stash:reveal', () => shell.showItemInFolder(dataFile))
+
+handle('stash:pickExpenses', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Import iPhone expenses',
+    defaultPath: app.getPath('downloads'),
+    properties: ['openFile'],
+    filters: [{ name: 'iPhone expenses', extensions: ['txt'] }],
+  })
+  if (result.canceled || result.filePaths.length === 0) return null
+  const file = result.filePaths[0]
+  if (fs.statSync(file).size > MAX_EXPENSES_BYTES) {
+    dialog.showErrorBox('File too large', `${path.basename(file)} is too large to be an iPhone expense file, so Stash didn't open it.`)
+    return null
+  }
+  expensesFile = file
+  return { name: path.basename(file), text: fs.readFileSync(file, 'utf8') }
+})
+
+// Takes no path from the UI: only the file the user just picked can be moved to the Trash.
+handle('stash:trashExpenses', async () => {
+  if (!expensesFile) return false
+  const file = expensesFile
+  expensesFile = null
+  await shell.trashItem(file)
+  return true
+})
 
 function createWindow() {
   win = new BrowserWindow({

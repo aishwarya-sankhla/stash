@@ -346,3 +346,17 @@ button.icon.manage.open { transform: rotate(180deg); }
   .hero { flex-direction: column; align-items: flex-start; }
   h1 { font-size: 1.9rem; }
 }
+
+/* ---------- iPhone import ---------- */
+.import-preview { border: 1px solid var(--line); border-radius: 16px; padding: 0.9rem 1rem; margin: 0.9rem 0; background: var(--field); display: grid; gap: 0.6rem; }
+.import-preview .tx-list li { grid-template-columns: minmax(0, 1fr) auto auto; }
+.import-preview .tx-list li:hover { background: transparent; }
+.import-summary strong { font-family: var(--display); font-size: 1.05rem; }
+.import-rejected summary, .guide summary { cursor: pointer; font-weight: 600; }
+.import-rejected summary { color: #8f6b00; font-size: 0.9rem; }
+.import-rejected ul { margin: 0.5rem 0 0; padding-left: 1.1rem; font-size: 0.86rem; }
+.import-rejected code, .guide code { background: var(--sunk); border-radius: 6px; padding: 0.05rem 0.35rem; font-size: 0.85em; overflow-wrap: anywhere; }
+.guide { margin-top: 0.9rem; border-top: 1px solid var(--sunk); padding-top: 0.9rem; }
+.guide h3 { font-size: 0.98rem; margin: 1.1rem 0 0.35rem; }
+.guide p, .guide li { line-height: 1.55; }
+.guide ol { padding-left: 1.3rem; margin: 0.3rem 0 0.5rem; display: grid; gap: 0.3rem; }
