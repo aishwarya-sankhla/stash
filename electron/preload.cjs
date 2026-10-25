@@ -9,4 +9,7 @@ contextBridge.exposeInMainWorld('stashDesktop', {
   reveal: () => ipcRenderer.invoke('stash:reveal'),
   pickExpenses: () => ipcRenderer.invoke('stash:pickExpenses'),
   trashExpenses: () => ipcRenderer.invoke('stash:trashExpenses'),
+  backupNow: () => ipcRenderer.invoke('stash:backupNow'),
+  openBackup: () => ipcRenderer.invoke('stash:openBackup'),
+  revealBackups: () => ipcRenderer.invoke('stash:revealBackups'),
 })

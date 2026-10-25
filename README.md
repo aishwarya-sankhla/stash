@@ -70,6 +70,8 @@ Make the AppImage executable (`chmod +x Stash-*.AppImage`) and run it.
 
 Every change is saved straight away to `Documents/Stash/stash-data.json` (on Linux without a Documents folder, `~/Stash/stash-data.json`). **Settings → Data file** shows the path and lets you move it or open another file. Back it up like any other file. Updating or replacing the app never touches it.
 
+**Automatic backups:** Stash keeps a copy of your data from each of the last 30 days, plus one before any reset, import or restore, in a `backups` folder next to the data file. To go back, use **Settings → Data file → Restore a backup…** (your current data is backed up first). The desktop app makes backups; the browser version doesn't.
+
 ## Other ways to install
 
 [Releases](#install) is the easiest way. These are the alternatives.

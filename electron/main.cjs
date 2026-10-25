@@ -8,6 +8,7 @@ const configFile = () => path.join(app.getPath('userData'), 'config.json')
 const defaultDataFile = () => path.join(app.getPath('documents'), 'Stash', 'stash-data.json')
 const JSON_FILTER = [{ name: 'Stash data', extensions: ['json'] }]
 const MAX_EXPENSES_BYTES = 1024 * 1024 // matches MAX_PHONE_FILE_BYTES in src/phoneImport.ts
+const BACKUP_DAYS = 30
 const indexFile = path.join(__dirname, '..', 'dist', 'index.html')
 const pageUrl = process.env.STASH_DEV_URL || pathToFileURL(indexFile).href
 
@@ -35,6 +36,37 @@ function writeAtomic(file, text) {
   const tmp = `${file}.tmp`
   fs.writeFileSync(tmp, text, { mode: 0o600 }) // financial data: readable by this user only
   fs.renameSync(tmp, file)
+}
+
+const backupDir = () => path.join(path.dirname(dataFile), 'backups')
+const pad = (n) => String(n).padStart(2, '0')
+const localDate = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+
+/**
+ * Copies the data file to backups/stash-data-<suffix>.json and deletes backups older than BACKUP_DAYS.
+ * A failed backup is logged but never blocks saving.
+ */
+function backup(suffix) {
+  try {
+    if (!fs.existsSync(dataFile)) return
+    const dir = backupDir()
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 })
+    const target = path.join(dir, `stash-data-${suffix}.json`)
+    fs.copyFileSync(dataFile, target)
+    fs.chmodSync(target, 0o600)
+    const cutoff = localDate(new Date(Date.now() - BACKUP_DAYS * 86_400_000))
+    for (const name of fs.readdirSync(dir)) {
+      const date = /^stash-data-(\d{4}-\d{2}-\d{2})/.exec(name)?.[1]
+      if (date && date < cutoff) fs.rmSync(path.join(dir, name), { force: true })
+    }
+  } catch (err) {
+    console.error('Backup failed:', err)
+  }
+}
+
+/** The first backup each day keeps the data as it was before that day's changes. */
+function dailyBackup() {
+  if (!fs.existsSync(path.join(backupDir(), `stash-data-${localDate()}.json`))) backup(localDate())
 }
 
 const looksLikeStashData = (d) =>
@@ -72,6 +104,7 @@ ipcMain.on('stash:load', (event) => {
   }
   try {
     event.returnValue = { path: dataFile, json: readJson(dataFile) }
+    dailyBackup()
   } catch {
     // Keep the unreadable file instead of overwriting it with empty data.
     const kept = dataFile.replace(/\.json$/, '') + `.unreadable-${Date.now()}.json`
@@ -86,7 +119,37 @@ ipcMain.on('stash:load', (event) => {
   }
 })
 
-handle('stash:save', (_event, json) => writeAtomic(dataFile, String(json)))
+handle('stash:save', (_event, json) => {
+  dailyBackup()
+  writeAtomic(dataFile, String(json))
+})
+
+// Called by the UI before it replaces all data (reset, sample data, import, restore).
+handle('stash:backupNow', () => {
+  const now = new Date()
+  backup(`${localDate(now)}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`)
+})
+
+handle('stash:openBackup', async () => {
+  fs.mkdirSync(backupDir(), { recursive: true, mode: 0o700 })
+  const result = await dialog.showOpenDialog(win, { title: 'Restore a backup', defaultPath: backupDir(), properties: ['openFile'], filters: JSON_FILTER })
+  if (result.canceled || result.filePaths.length === 0) return null
+  const file = result.filePaths[0]
+  let json
+  try {
+    json = readJson(file)
+  } catch {}
+  if (!json) {
+    dialog.showErrorBox('Not a Stash backup', `${path.basename(file)} isn't a Stash data file, so nothing was restored.`)
+    return null
+  }
+  return { name: path.basename(file), json }
+})
+
+handle('stash:revealBackups', () => {
+  fs.mkdirSync(backupDir(), { recursive: true, mode: 0o700 })
+  return shell.openPath(backupDir())
+})
 
 handle('stash:moveTo', async (_event, json) => {
   const result = await dialog.showSaveDialog(win, { title: 'Move data file', defaultPath: dataFile, filters: JSON_FILTER })

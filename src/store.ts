@@ -31,6 +31,11 @@ interface StashDesktop {
   pickExpenses(): Promise<{ name: string; text: string } | null>
   /** Moves the last picked expense file to the Trash. */
   trashExpenses(): Promise<boolean>
+  /** Copies the data file into the backups folder now (before replacing all data). */
+  backupNow(): Promise<void>
+  /** Opens a file picker in the backups folder and returns the chosen backup's contents. */
+  openBackup(): Promise<{ name: string; json: string } | null>
+  revealBackups(): Promise<string>
 }
 export const desktop = (globalThis as { stashDesktop?: StashDesktop }).stashDesktop
 

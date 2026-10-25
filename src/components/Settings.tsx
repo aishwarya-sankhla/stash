@@ -24,7 +24,9 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
 
   async function importJson(file: File) {
     try {
-      setData(parseData(await file.text()))
+      const next = parseData(await file.text())
+      await desktop?.backupNow()
+      setData(next)
       setMessage(`Imported ${file.name}.`)
     } catch {
       setMessage('That file is not valid finance data JSON.')
@@ -51,9 +53,26 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
     }
   }
 
-  function replace(next: AppData, label: string) {
+  async function restoreBackup() {
+    const file = await desktop!.openBackup()
+    if (!file) return
+    let next: AppData
+    try {
+      next = parseData(file.json)
+    } catch {
+      setMessage(`${file.name} isn't a Stash backup.`)
+      return
+    }
+    if (!confirm(`Restore ${file.name}? This replaces your current data; a backup of it is saved first.`)) return
+    await desktop!.backupNow()
+    setData(next)
+    setMessage(`Restored ${file.name}.`)
+  }
+
+  async function replace(next: AppData, label: string) {
     const hasData = data.transactions.length > 0 || data.holdings.length > 0 || data.fds.length > 0
     if (hasData && !confirm(`${label} will replace all your current data. Continue?`)) return
+    await desktop?.backupNow()
     setData(next)
     setMessage(`${label} done.`)
   }
@@ -120,6 +139,15 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
             <button onClick={() => desktop!.reveal()}>Show in folder</button>
             <button onClick={moveFile}>Move to…</button>
             <button onClick={openFile}>Open another file…</button>
+          </div>
+          <h3 className="subhead">Backups</h3>
+          <p className="muted small">
+            Stash keeps a copy of your data from each of the last 30 days, plus one before any reset, import or restore, in a backups folder next to
+            your data file.
+          </p>
+          <div className="row">
+            <button onClick={() => desktop!.revealBackups()}>Show backups</button>
+            <button onClick={restoreBackup}>Restore a backup…</button>
           </div>
         </section>
       )}

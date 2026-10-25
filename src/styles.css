@@ -361,3 +361,4 @@ button.icon.manage.open { transform: rotate(180deg); }
 .guide p, .guide li { line-height: 1.55; }
 .guide ol { padding-left: 1.3rem; margin: 0.3rem 0 0.5rem; display: grid; gap: 0.3rem; }
 .app-version { text-align: center; margin: 0.5rem 0 0; }
+.subhead { font-size: 1rem; margin: 1.3rem 0 0.2rem; }
