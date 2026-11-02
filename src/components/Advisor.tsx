@@ -6,12 +6,13 @@ import type { AppData } from '../types'
 import { Goals } from './Goals'
 import { IconTile, PageHeader, Progress, Stat, type Tint } from './ui'
 
-const SEVERITY: Record<Severity, { label: string; icon: LucideIcon; tint: Tint }> = {
-  critical: { label: 'Do first', icon: Siren, tint: 'rose' },
-  warning: { label: 'Heads up', icon: Eye, tint: 'butter' },
-  tip: { label: 'Tip', icon: Lightbulb, tint: 'lilac' },
-  good: { label: 'On track', icon: PartyPopper, tint: 'mint' },
+const SEVERITY: Record<Severity, { label: string; group: string; icon: LucideIcon; tint: Tint }> = {
+  critical: { label: 'Do first', group: 'Do first', icon: Siren, tint: 'rose' },
+  warning: { label: 'Heads up', group: 'Heads up', icon: Eye, tint: 'butter' },
+  tip: { label: 'Tip', group: 'Tips', icon: Lightbulb, tint: 'lilac' },
+  good: { label: 'On track', group: 'On track', icon: PartyPopper, tint: 'mint' },
 }
+const SEVERITIES: Severity[] = ['critical', 'warning', 'tip', 'good']
 const CLASSES: PortfolioClass[] = ['equity', 'debt', 'gold']
 
 export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data: AppData; setData: SetData; currentMonth: string; onSetupProfile: () => void }) {
@@ -87,34 +88,39 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
           <h2>What to do next</h2>
           <span className="muted small">Most important first</span>
         </div>
-        <ul className="advice">
-          {r.advice.map((a) => {
-            const s = SEVERITY[a.severity]
-            return (
-              <li key={a.id} className={`advice-item sev-${a.severity}`}>
-                <IconTile icon={s.icon} tint={s.tint} />
-                <div className="advice-body">
-                  <div className="advice-kicker">{s.label}</div>
-                  <div className="advice-title">{a.title}</div>
-                  <div className="advice-detail">{a.detail}</div>
-                  <details className="advice-why">
-                    <summary>Why?</summary>
-                    <ul>
-                      {a.why.map((line) => (
-                        <li key={line}>{line}</li>
-                      ))}
-                    </ul>
-                  </details>
-                  {a.id === 'profile' && (
-                    <button className="primary advice-action" onClick={onSetupProfile}>
-                      Set up profile
-                    </button>
-                  )}
-                </div>
-              </li>
-            )
-          })}
-        </ul>
+        {SEVERITIES.filter((sev) => counts[sev]).map((sev) => (
+          <div key={sev} className={`advice-group sev-${sev}`}>
+            <h3 className="advice-group-label">
+              {SEVERITY[sev].group} <span className="advice-count">{counts[sev]}</span>
+            </h3>
+            <ul className="advice">
+              {r.advice
+                .filter((a) => a.severity === sev)
+                .map((a) => (
+                  <li key={a.id} className="advice-item">
+                    <IconTile icon={SEVERITY[sev].icon} tint={SEVERITY[sev].tint} size="sm" />
+                    <div className="advice-body">
+                      <div className="advice-title">{a.title}</div>
+                      <div className="advice-detail">{a.detail}</div>
+                      {a.id === 'profile' && (
+                        <button className="primary advice-action" onClick={onSetupProfile}>
+                          Set up profile
+                        </button>
+                      )}
+                      <details className="advice-why">
+                        <summary>Why?</summary>
+                        <ul>
+                          {a.why.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </details>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       <div className="grid2">
