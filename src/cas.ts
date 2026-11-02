@@ -1,6 +1,6 @@
 import { applySips, sipCoveredMonth } from './finance'
 import { newId } from './format'
-import type { AppData, Holding } from './types'
+import type { AppData, Flow, Holding } from './types'
 
 /**
  * Reads the text of a CAMS / KFintech Consolidated Account Statement (the detailed CAS you can request
@@ -15,6 +15,12 @@ export interface CasFund {
   /** Purchase cost of the units still held; null when the statement doesn't show it. */
   cost: number | null
   value: number
+  /**
+   * Every purchase (+) and redemption (−) since the first one, for working out the yearly return. Null when
+   * the statement doesn't cover the fund's whole history (it opens with units already held) or when the
+   * transactions found don't add up to the closing units, so a missed line can't skew the return.
+   */
+  flows: Flow[] | null
 }
 
 const MONTHS: Record<string, string> = { jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06', jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12' }
@@ -43,18 +49,58 @@ function cleanName(text: string): string {
     .trim()
 }
 
+/** Figures at the end of a transaction line; redemptions show negative amounts and units, in brackets or with a minus. */
+const FIGURE = /^\(?-?[\d,]+\.\d+\)?$/
+const figure = (token: string) => (token.startsWith('(') || token.startsWith('-') ? -1 : 1) * num(token.replace(/[()-]/g, ''))
+
+/**
+ * A transaction line: "05-Oct-2026 Purchase - Systematic Investment 4,999.75 47.393 105.5000 657.390"
+ * (amount, units, NAV, unit balance), or a one-figure charge line such as "05-Oct-2026 *** Stamp Duty *** 0.25".
+ */
+function parseTransaction(line: string): { flow: Flow; units: number } | null {
+  const match = new RegExp(String.raw`^${DATE}\s+(.*)$`).exec(line.trim())
+  const date = match && toIso(match[1])
+  if (!match || !date) return null
+  const tokens = match[2].split(/\s+/)
+  let count = 0
+  while (count < tokens.length && FIGURE.test(tokens[tokens.length - 1 - count])) count++
+  const figures = tokens.slice(tokens.length - count).map(figure)
+  if (count >= 4) {
+    const [amount, units] = figures.slice(-4)
+    const sign = amount < 0 || units < 0 ? -1 : 1
+    return { flow: { date, amount: round(sign * Math.abs(amount), 2) }, units: round(sign * Math.abs(units), 4) }
+  }
+  // Stamp duty is paid on top of each purchase, so it is part of the money you put in.
+  if (count === 1 && /stamp\s*duty/i.test(match[2])) return { flow: { date, amount: figures[0] }, units: 0 }
+  return null
+}
+
 export function parseCasText(lines: string[]): CasFund[] {
   const funds = new Map<string, CasFund>()
   let name = ''
   let isin: string | null = null
+  let opening = 0
+  let flows: Flow[] = []
+  let unitsBought = 0
   lines.forEach((line, i) => {
     const isinMatch = /ISIN\s*:\s*(IN[A-Z0-9]{10})/i.exec(line)
     if (isinMatch) {
+      opening = 0
+      flows = []
+      unitsBought = 0
       isin = isinMatch[1].toUpperCase()
       // Long names wrap: the line before starts with the registrar's scheme code ("P8042-HDFC …").
       const prev = lines[i - 1] ?? ''
       const startsBefore = /^[A-Z0-9]{3,12}-\S/.test(prev) && !/ISIN|Closing\s+Unit/i.test(prev)
       name = cleanName(startsBefore ? `${prev} ${line.slice(0, isinMatch.index)}` : line.slice(0, isinMatch.index))
+      return
+    }
+    const openingMatch = /Opening\s+Unit\s+Balance\s*:?\s*([\d,]+(?:\.\d+)?)/i.exec(line)
+    if (openingMatch) opening = num(openingMatch[1])
+    const transaction = parseTransaction(line)
+    if (transaction) {
+      flows.push(transaction.flow)
+      unitsBought += transaction.units
       return
     }
     if (!/Closing\s+Unit\s+Balance/i.test(line)) return
@@ -79,6 +125,7 @@ export function parseCasText(lines: string[]): CasFund[] {
       navDate: toIso(market?.[1] ?? nav?.[1] ?? '') ?? null,
       cost: cost ? num(cost[1]) : null,
       value,
+      flows: opening === 0 && flows.length > 0 && Math.abs(unitsBought - units) < 0.01 ? flows : null,
     }
     // The same scheme held in several folios becomes one fund.
     const key = isin ?? name.toLowerCase()
@@ -92,12 +139,16 @@ export function parseCasText(lines: string[]): CasFund[] {
             value: round(prev.value + fund.value, 2),
             cost: prev.cost !== null && fund.cost !== null ? round(prev.cost + fund.cost, 2) : null,
             navDate: [prev.navDate, fund.navDate].filter(Boolean).sort().at(-1) ?? null,
+            flows: mergeFlows(prev.flows, fund.flows),
           }
         : fund,
     )
   })
   return [...funds.values()]
 }
+
+/** Flows of two folios or funds combined into one holding; unknown if either is unknown. */
+const mergeFlows = (a: Flow[] | null, b: Flow[] | null) => (a && b ? [...a, ...b].sort((x, y) => x.date.localeCompare(y.date)) : null)
 
 const tokens = (name: string) =>
   new Set(
@@ -149,7 +200,8 @@ export type CasAction = { kind: 'update'; holdingId: string } | { kind: 'add'; a
 /**
  * Applies the statement: updated holdings take the statement's cost, value and date; new ones are added.
  * SIPs restart from the statement date, so instalments Stash added after it are re-added on top of the
- * statement's value instead of being lost or counted twice.
+ * statement's value instead of being lost or counted twice. A statement covering a fund's whole history
+ * replaces its cash flows, so its yearly return is known straight away.
  */
 export function applyCasImport(data: AppData, choices: { fund: CasFund; action: CasAction }[], today: string): AppData {
   const updates = new Map<string, CasFund>()
@@ -159,7 +211,14 @@ export function applyCasImport(data: AppData, choices: { fund: CasFund; action: 
       const prev = updates.get(action.holdingId)
       updates.set(
         action.holdingId,
-        prev ? { ...prev, value: prev.value + fund.value, cost: prev.cost !== null && fund.cost !== null ? prev.cost + fund.cost : null } : fund,
+        prev
+          ? {
+              ...prev,
+              value: prev.value + fund.value,
+              cost: prev.cost !== null && fund.cost !== null ? prev.cost + fund.cost : null,
+              flows: mergeFlows(prev.flows, fund.flows),
+            }
+          : fund,
       )
     } else if (action.kind === 'add') {
       added.push({
@@ -170,6 +229,7 @@ export function applyCasImport(data: AppData, choices: { fund: CasFund; action: 
         currentValue: fund.value,
         valueUpdated: fund.navDate ?? today,
         ...(fund.isin ? { isin: fund.isin } : {}),
+        flows: fund.flows ?? [{ date: fund.navDate ?? today, amount: fund.value }],
       })
     }
   }
@@ -184,6 +244,9 @@ export function applyCasImport(data: AppData, choices: { fund: CasFund; action: 
       valueUpdated: asOf,
       ...(fund.isin ? { isin: fund.isin } : {}),
       ...(h.sip ? { sip: { ...h.sip, lastApplied: sipCoveredMonth(asOf, h.sip.day) } } : {}),
+      // The statement's own history when it has one; otherwise Stash's, up to the statement date (later
+      // SIP instalments are re-added below, like the invested amount).
+      flows: fund.flows ?? (h.flows ?? []).filter((f) => f.date <= asOf),
     }
   })
   return applySips({ ...data, holdings: [...holdings, ...added] }, today)

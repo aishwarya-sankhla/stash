@@ -35,20 +35,46 @@ const holding = (id: string, name: string, extra: Partial<Holding> = {}): Holdin
 })
 
 describe('parseCasText', () => {
+  // A fund whose statement starts before its first purchase, so its whole history is listed.
+  const nifty = (lines: string[]) => [
+    'N123-Nippon India Index Fund - Nifty 50 Plan - Direct Plan Growth Plan - ISIN: INF204KB15I9 Registrar : KFINTECH',
+    'Opening Unit Balance: 0.000',
+    ...lines,
+    'Closing Unit Balance: 380.000 NAV on 23-Oct-2026: INR 50.0000 Total Cost Value: 15,000.00 Market Value on 23-Oct-2026: INR 19,000.00',
+  ]
+  const purchase1 = '05-Jan-2025 Purchase - Systematic Investment (Instalment No - 1) 9,999.50 250.000 39.9980 250.000'
+  const purchase2 = '05-Feb-2025 SIP Purchase - Instalment No 2 - 9,999.50 240.000 41.6646 490.000'
+  const redemption = '10-Jun-2025 Redemption (5,000.00) (110.000) 45.4545 380.000'
+
+  it('reads a full purchase history, counting stamp duty as money in and redemptions as money out', () => {
+    const [fund] = parseCasText(nifty([purchase1, '05-Jan-2025 *** Stamp Duty *** 0.50', purchase2, '05-Feb-2025 *** Stamp Duty *** 0.50', redemption]))
+    expect(fund.flows).toEqual([
+      { date: '2025-01-05', amount: 9999.5 },
+      { date: '2025-01-05', amount: 0.5 },
+      { date: '2025-02-05', amount: 9999.5 },
+      { date: '2025-02-05', amount: 0.5 },
+      { date: '2025-06-10', amount: -5000 },
+    ])
+  })
+
+  it('drops the history when a transaction is missing, so units no longer add up', () => {
+    expect(parseCasText(nifty([purchase1, redemption]))[0].flows).toBeNull()
+  })
+
   it('reads each fund, merges folios of one scheme, follows wrapped lines and skips redeemed funds', () => {
     expect(parseCasText(STATEMENT)).toEqual([
-      { name: 'Axis Small Cap Fund - Direct Growth', isin: 'INF846K01K35', units: 757.39, navDate: '2026-10-23', cost: 73500, value: 79946.73 },
+      { name: 'Axis Small Cap Fund - Direct Growth', isin: 'INF846K01K35', units: 757.39, navDate: '2026-10-23', cost: 73500, value: 79946.73, flows: null },
       // The scheme name wrapped onto the ISIN line; the closing figures wrapped onto the next line
-      { name: 'HDFC Balanced Advantage Fund - Direct Plan - Growth Option', isin: 'INF179K01WA6', units: 112.512, navDate: '2026-10-22', cost: 38000, value: 56362 },
+      { name: 'HDFC Balanced Advantage Fund - Direct Plan - Growth Option', isin: 'INF179K01WA6', units: 112.512, navDate: '2026-10-22', cost: 38000, value: 56362, flows: null },
       // No market value or cost printed: value is units × NAV, cost unknown
-      { name: 'ICICI Prudential Gold ETF FOF - Direct Plan - Growth', isin: 'INF109KC1NT3', units: 1500, navDate: '2026-10-23', cost: null, value: 45000 },
+      { name: 'ICICI Prudential Gold ETF FOF - Direct Plan - Growth', isin: 'INF109KC1NT3', units: 1500, navDate: '2026-10-23', cost: null, value: 45000, flows: null },
     ])
   })
 })
 
 describe('matchHolding', () => {
   it('prefers the ISIN, then a close name, keeping Direct and Regular plans apart', () => {
-    const fund = { name: 'HDFC Balanced Advantage Fund - Direct Plan - Growth Option', isin: 'INF179K01WA6', units: 1, navDate: null, cost: null, value: 1 }
+    const fund = { name: 'HDFC Balanced Advantage Fund - Direct Plan - Growth Option', isin: 'INF179K01WA6', units: 1, navDate: null, cost: null, value: 1, flows: null }
     const regular = holding('r', 'HDFC Balanced Advantage Fund - Regular Plan - Growth')
     const direct = holding('d', 'HDFC Balanced Advantage Fund - Direct Growth')
     expect(matchHolding(fund, [regular, direct])?.id).toBe('d')
@@ -64,9 +90,13 @@ describe('applyCasImport', () => {
       invested: 60000,
       currentValue: 70000,
       sip: { amount: 5000, day: 25, lastApplied: '2026-10' }, // Stash already added the 25 Oct instalment
+      flows: [
+        { date: '2026-01-01', amount: 65000 },
+        { date: '2026-10-25', amount: 5000 },
+      ],
     })
-    const fund = { name: 'Axis Small Cap Fund - Direct Growth', isin: 'INF846K01K35', units: 657.39, navDate: '2026-10-23', cost: 64000, value: 69391 }
-    const gold = { name: 'ICICI Prudential Gold ETF FOF', isin: 'INF109KC1NT3', units: 1500, navDate: '2026-10-23', cost: null, value: 45000 }
+    const fund = { name: 'Axis Small Cap Fund - Direct Growth', isin: 'INF846K01K35', units: 657.39, navDate: '2026-10-23', cost: 64000, value: 69391, flows: null }
+    const gold = { name: 'ICICI Prudential Gold ETF FOF', isin: 'INF109KC1NT3', units: 1500, navDate: '2026-10-23', cost: null, value: 45000, flows: null }
     const next = applyCasImport(
       { ...DEFAULT_DATA, holdings: [existing] },
       [
@@ -78,5 +108,17 @@ describe('applyCasImport', () => {
     // The statement (23 Oct) predates the 25 Oct instalment, so it is added back once
     expect(next.holdings[0]).toMatchObject({ invested: 69000, currentValue: 74391, valueUpdated: '2026-10-23', isin: 'INF846K01K35', sip: { lastApplied: '2026-10' } })
     expect(next.holdings[1]).toMatchObject({ name: 'ICICI Prudential Gold ETF FOF', assetClass: 'gold', invested: 45000, currentValue: 45000, isin: 'INF109KC1NT3' })
+    // No history in the statement: Stash's own flows are kept, and the re-added instalment appears once, not twice
+    expect(next.holdings[0].flows).toEqual([
+      { date: '2026-01-01', amount: 65000 },
+      { date: '2026-10-25', amount: 5000 },
+    ])
+    // A new fund without history starts from its statement value
+    expect(next.holdings[1].flows).toEqual([{ date: '2026-10-23', amount: 45000 }])
+
+    // With a full history in the statement, it replaces Stash's flows; later SIP instalments are still added
+    const history = [{ date: '2024-11-25', amount: 64000 }]
+    const withHistory = applyCasImport({ ...DEFAULT_DATA, holdings: [existing] }, [{ fund: { ...fund, flows: history }, action: { kind: 'update', holdingId: 'axis' } }], '2026-10-27')
+    expect(withHistory.holdings[0].flows).toEqual([...history, { date: '2026-10-25', amount: 5000 }])
   })
 })

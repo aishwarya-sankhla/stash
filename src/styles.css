@@ -267,7 +267,7 @@ button.icon.manage.open { transform: rotate(180deg); }
 .progress-bar.over { background: var(--neg); }
 
 /* ---------- Advisor ---------- */
-.advice { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 0.75rem; }
+.advice { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 0.75rem; align-items: start; }
 .advice-item {
   display: flex; gap: 1rem; align-items: flex-start; padding: 1rem 1.1rem; border-radius: 18px;
   border: 1px solid var(--line); background: var(--surface);
@@ -287,6 +287,21 @@ button.icon.manage.open { transform: rotate(180deg); }
 .advice-title { font-family: var(--display); font-weight: 700; font-size: 1.05rem; letter-spacing: -0.01em; }
 .advice-action { margin-top: 0.75rem; padding: 0.45rem 0.95rem; font-size: 0.88rem; }
 .advice-detail { color: var(--ink-2); margin-top: 0.25rem; line-height: 1.5; font-size: 0.93rem; }
+.advice-why { margin-top: 0.5rem; font-size: 0.86rem; color: var(--ink-2); }
+.advice-why summary { cursor: pointer; width: fit-content; color: #5b45e0; font-weight: 600; list-style: none; }
+.advice-why summary::-webkit-details-marker { display: none; }
+.advice-why summary::after { content: ' ▸'; font-size: 0.8em; }
+.advice-why[open] summary::after { content: ' ▾'; }
+.advice-why ul { margin: 0.45rem 0 0; padding: 0.6rem 0.8rem 0.6rem 1.7rem; background: var(--sunk); border-radius: 10px; line-height: 1.5; }
+.advice-why li + li { margin-top: 0.3rem; }
+.retire-figures { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1.2rem 2.4rem; margin-bottom: 1rem; }
+.retire-label { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; }
+.retire-amount { font-family: var(--display); font-weight: 800; font-size: 2.1rem; letter-spacing: -0.03em; line-height: 1.1; }
+.retire-amount.muted-amount { color: var(--ink-2); }
+.retire-verdict { margin-left: auto; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.9rem; border-radius: 12px; font-size: 0.9rem; }
+.retire-verdict.short { background: #fff4cc; color: #6f5300; }
+.retire-verdict.ok { background: #e2f6ec; color: #1d7f55; }
+.retirement .progress { margin-bottom: 0.8rem; }
 
 .plan-total { font-family: var(--display); font-weight: 800; font-size: 2.3rem; letter-spacing: -0.04em; line-height: 1; }
 .plan-total span { display: block; font-family: var(--body); font-weight: 500; font-size: 0.85rem; letter-spacing: 0; color: var(--muted); margin-top: 0.4rem; }

@@ -1,6 +1,6 @@
-import { ArrowDownRight, ArrowUpRight, Eye, LifeBuoy, Lightbulb, Percent, PartyPopper, Siren, type LucideIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Eye, LifeBuoy, Lightbulb, Percent, PartyPopper, Siren, Sunset, type LucideIcon } from 'lucide-react'
 import { buildReport, type PortfolioClass, type Severity } from '../advisor'
-import { formatINR, formatPct } from '../format'
+import { formatCompactINR, formatINR, formatPct, formatRate } from '../format'
 import type { SetData } from '../store'
 import type { AppData } from '../types'
 import { Goals } from './Goals'
@@ -46,6 +46,42 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
 
       <Goals data={data} setData={setData} statuses={r.goals} />
 
+      {r.retirement && (
+        <section className="card retirement">
+          <div className="card-head">
+            <h2>Retirement at {data.profile.retirementAge}</h2>
+            <span className="muted small">
+              {r.retirement.years} years away · in today's money
+            </span>
+          </div>
+          <div className="retire-figures">
+            <div>
+              <span className="retire-label">On course for</span>
+              <span className="retire-amount">{formatCompactINR(r.retirement.projected / r.retirement.inflator)}</span>
+            </div>
+            <div>
+              <span className="retire-label">Needed</span>
+              <span className="retire-amount muted-amount">{formatCompactINR(r.retirement.needed / r.retirement.inflator)}</span>
+            </div>
+            <div className={`retire-verdict ${r.retirement.extraMonthly > 0 ? 'short' : 'ok'}`}>
+              <Sunset size={18} />
+              {r.retirement.extraMonthly > 0 ? (
+                <span>
+                  Invest <b>{formatINR(r.retirement.extraMonthly)}</b> more a month to close the gap
+                </span>
+              ) : (
+                <span>On track for your current lifestyle</span>
+              )}
+            </div>
+          </div>
+          <Progress fraction={Math.min(1, r.retirement.projected / r.retirement.needed)} />
+          <p className="muted small">
+            {formatINR(r.retirement.current)} in long-term holdings plus {formatINR(r.retirement.monthlySip)}/month of SIPs, growing {formatRate(r.retirement.assumedReturn)} a
+            year. Needed is 30× your yearly spending then, after 6% inflation. Open “Why?” on the retirement tip below for the full working; set your retirement age in Settings.
+          </p>
+        </section>
+      )}
+
       <section className="card">
         <div className="card-head">
           <h2>What to do next</h2>
@@ -61,6 +97,14 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
                   <div className="advice-kicker">{s.label}</div>
                   <div className="advice-title">{a.title}</div>
                   <div className="advice-detail">{a.detail}</div>
+                  <details className="advice-why">
+                    <summary>Why?</summary>
+                    <ul>
+                      {a.why.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </details>
                   {a.id === 'profile' && (
                     <button className="primary advice-action" onClick={onSetupProfile}>
                       Set up profile
@@ -135,7 +179,8 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
         </section>
       </div>
       <p className="disclaimer">
-        General, rule-based guidance, not personalised financial advice. It doesn't account for taxes or specific products. Talk to a SEBI-registered investment adviser before big decisions.
+        General, rule-based guidance, not personalised financial advice. Tax figures are estimates using the capital-gains rules in force since July 2024 and your
+        slab; check current rules before acting. Talk to a SEBI-registered investment adviser before big decisions.
       </p>
     </div>
   )

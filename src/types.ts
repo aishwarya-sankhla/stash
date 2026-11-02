@@ -18,6 +18,12 @@ export interface Sip {
   lastApplied: string // YYYY-MM of the latest instalment already included in the holding
 }
 
+/** Money put into (+) or taken out of (−) a holding on a date, used to work out its yearly return (XIRR). */
+export interface Flow {
+  date: string // YYYY-MM-DD
+  amount: number
+}
+
 export interface Holding {
   id: string
   name: string
@@ -29,6 +35,11 @@ export interface Holding {
   sip?: Sip
   /** Set when the holding was imported from a CAS statement, so later imports update it. */
   isin?: string
+  /**
+   * Dated money in and out, oldest first. When Stash doesn't know a holding's history, the first entry is
+   * its value on the day tracking started, so returns are measured from then.
+   */
+  flows?: Flow[]
 }
 
 /** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */
@@ -50,6 +61,9 @@ export interface Profile {
   highInterestDebt: number // credit cards, personal loans, etc.
   hasHealthInsurance: boolean
   hasTermInsurance: boolean
+  retirementAge: number
+  /** Income-tax slab rate in % (0–30), for after-tax comparisons. */
+  taxSlab: number
   /** True once the user has edited or confirmed their profile; until then the advisor runs on defaults. */
   confirmed: boolean
 }
@@ -122,6 +136,8 @@ export const DEFAULT_DATA: AppData = {
     highInterestDebt: 0,
     hasHealthInsurance: false,
     hasTermInsurance: false,
+    retirementAge: 60,
+    taxSlab: 30,
     confirmed: false,
   },
 }

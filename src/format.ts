@@ -2,6 +2,8 @@ const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR',
 
 export const formatINR = (n: number) => inr.format(Math.round(n))
 export const formatPct = (fraction: number) => `${Math.round(fraction * 100)}%`
+/** A rate with one decimal, such as returns and interest: "12.4%". */
+export const formatRate = (fraction: number) => `${(fraction * 100).toFixed(1)}%`
 
 export function formatMonth(month: string) {
   const [y, m] = month.split('-').map(Number)

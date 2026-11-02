@@ -33,7 +33,7 @@ export function sampleData(today = new Date()): AppData {
 
   const holdings: Holding[] = [
     { id: newId(), name: 'Nifty 50 index fund', assetClass: 'equity', invested: 420000, currentValue: 545000, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 5, lastApplied: sipCoveredMonth(isoDate(today), 5) } },
-    { id: newId(), name: 'Flexi-cap mutual fund', assetClass: 'equity', invested: 250000, currentValue: 301000, valueUpdated: shiftDays(today, -12), sip: { amount: 5000, day: 25, lastApplied: sipCoveredMonth(isoDate(today), 25) } },
+    { id: newId(), name: 'Flexi-cap fund - Regular Plan', assetClass: 'equity', invested: 250000, currentValue: 301000, valueUpdated: shiftDays(today, -12), sip: { amount: 5000, day: 25, lastApplied: sipCoveredMonth(isoDate(today), 25) } },
     { id: newId(), name: 'Direct stocks', assetClass: 'equity', invested: 150000, currentValue: 162000, valueUpdated: shiftDays(today, -75) },
     { id: newId(), name: 'EPF', assetClass: 'debt', invested: 280000, currentValue: 312000, valueUpdated: shiftDays(today, -12) },
     { id: newId(), name: 'PPF', assetClass: 'debt', invested: 90000, currentValue: 98000, valueUpdated: shiftDays(today, -12) },
@@ -41,6 +41,14 @@ export function sampleData(today = new Date()): AppData {
     { id: 'sample-car-fund', name: 'Arbitrage fund (car fund)', assetClass: 'debt', invested: 150000, currentValue: 156500, valueUpdated: shiftDays(today, -12), sip: { amount: 10000, day: 10, lastApplied: sipCoveredMonth(isoDate(today), 10) } },
     { id: newId(), name: 'Savings account + sweep FD', assetClass: 'cash', invested: 480000, currentValue: 480000, valueUpdated: shiftDays(today, -12) },
   ]
+  // Purchase history behind each holding: SIP holdings were bought monthly, the rest in one go two years ago.
+  const withHistory = (h: Holding): Holding => {
+    if (!h.sip) return { ...h, flows: [{ date: shiftDays(today, -730), amount: h.invested }] }
+    const { amount, day, lastApplied } = h.sip
+    const flows = lastMonths(lastApplied, Math.round(h.invested / amount)).map((m) => ({ date: `${m}-${String(day).padStart(2, '0')}`, amount }))
+    return { ...h, flows }
+  }
+
   const fds: FixedDeposit[] = [
     { id: newId(), bank: 'SBI', principal: 200000, rate: 7.1, startDate: shiftDays(today, -345), maturityDate: shiftDays(today, 20) },
     { id: newId(), bank: 'HDFC Bank', principal: 150000, rate: 7.25, startDate: shiftDays(today, -120), maturityDate: shiftDays(today, 610) },
@@ -65,7 +73,7 @@ export function sampleData(today = new Date()): AppData {
   return {
     transactions,
     budgets: { Groceries: 12000, Dining: 6000, Shopping: 8000, Entertainment: 3000, Transport: 5500 },
-    holdings,
+    holdings: holdings.map(withHistory),
     fds,
     netWorth,
     goals: [{ id: newId(), name: 'Car down payment', target: 600000, targetDate: carDate, holdingIds: ['sample-car-fund'] }],
@@ -76,6 +84,8 @@ export function sampleData(today = new Date()): AppData {
       highInterestDebt: 0,
       hasHealthInsurance: true,
       hasTermInsurance: false,
+      retirementAge: 60,
+      taxSlab: 30,
       confirmed: true,
     },
   }

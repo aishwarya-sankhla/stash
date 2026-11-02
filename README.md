@@ -28,9 +28,10 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 - **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category with the change from the previous month (switch to **vs last month** for a side-by-side bar chart), six-month trend.
 - **Transactions**: add, edit, search and delete income and expenses, or import expenses logged on an iPhone. Hover over a row and click the pencil to edit it.
 - **Budgets**: monthly limits per expense category.
-- **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).
-- **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). **Goals** (such as a car or house down payment) have a target amount and date. You link the holdings that fund each goal, and Stash shows whether you're on track, how much to invest each month, and a safer mix as the date gets closer. Money linked to a goal is kept out of the emergency fund and the long-term mix. The logic is in `src/advisor.ts` and `src/goals.ts`.
-- **Settings**: your profile for the advisor, the data file location, iPhone import, export/import and sample data.
+- **Investments**: holdings by asset class with returns (the yearly return, XIRR, once a holding has a year of dated history), monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).
+- **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). **Goals** (such as a car or house down payment) have a target amount and date. You link the holdings that fund each goal, and Stash shows whether you're on track, how much to invest each month, and a safer mix as the date gets closer. Money linked to a goal is kept out of the emergency fund and the long-term mix. It also projects your **retirement** corpus against what your current spending will need, runs **tax checks** for your slab (Regular plans, yearly tax-free gain booking from January to March, FDs and debt funds compared with arbitrage funds after tax), and spots **spending jumps and recurring payments**. Every tip has a **Why?** link with its numbers and rule. The logic is in `src/advisor.ts` and `src/goals.ts`.
+- **Yearly return (XIRR)**: Stash records the date of every SIP instalment and top-up, so it can show the yearly return that accounts for when each rupee went in, like your NPS statement does. Holdings you already had start counting from their last value update, so their yearly return appears a year later. Import a CAS statement covering your first purchase to get it straight away.
+- **Settings**: your profile for the advisor (including retirement age and tax slab), the data file location, iPhone import, export/import and sample data.
 
 The advisor gives general, rule-based guidance, not personalised financial advice.
 
@@ -167,7 +168,7 @@ Instead of typing in each fund's value, import your Consolidated Account Stateme
 ### Get your CAS
 
 1. Go to [camsonline.com](https://www.camsonline.com) → **Investors** → **Statements** → **CAS – CAMS+KFintech** (or use [mfs.kfintech.com](https://mfs.kfintech.com)).
-2. Choose **Detailed** (not Summary), pick a period ending today, and enter your email and a password for the PDF.
+2. Choose **Detailed** (not Summary) and a **Specific period** from before your first investment (for example 01-Jan-2000) up to today. Enter your email and a password for the PDF. Covering your first purchase lets Stash work out each fund's yearly return (XIRR).
 3. The statement arrives by email within a few minutes.
 
 Only the detailed CAS from CAMS or KFintech is supported. The NSDL/CDSL demat CAS and the summary CAS won't import.
@@ -177,7 +178,7 @@ Only the detailed CAS from CAMS or KFintech is supported. The NSDL/CDSL demat CA
 1. Go to **Investments** → **Import CAS statement…** and pick the PDF.
 2. Enter the password you set when requesting it. Stash doesn't save it.
 3. Check the preview. Each fund is matched to an existing holding by ISIN, or else by name (a Direct plan is never matched with a Regular one). For each fund choose **Update** an existing holding, **Add as new holding**, or **Skip**.
-4. Click **Import**. Each updated holding gets the invested amount, current value and NAV date from the statement. Any SIP instalments due after the statement date are added back on top.
+4. Click **Import**. Each updated holding gets the invested amount, current value and NAV date from the statement. Any SIP instalments due after the statement date are added back on top. Funds whose whole purchase history is in the statement (the preview shows "history since …") also get their dated purchases, so their yearly return shows straight away.
 
 Stash's CAS reader has only been tested on sample statements. If a fund is missing or shows the wrong figures, check the preview before importing, and enter that fund by hand.
 

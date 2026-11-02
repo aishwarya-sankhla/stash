@@ -158,6 +158,7 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
                   {r.fund.name}
                   <span className="chip-sub">
                     {r.fund.isin ?? 'No ISIN'} · {r.fund.cost !== null ? `${formatINR(r.fund.cost)} invested` : 'invested amount not shown'}
+                    {r.fund.flows && ` · history since ${formatDate(r.fund.flows[0].date)}`}
                   </span>
                 </span>
                 <span className="cas-value">{formatINR(r.fund.value)}</span>
@@ -194,6 +195,7 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
           </ul>
           <p className="muted small">
             Updating sets the holding's invested amount, value and date from the statement; SIP instalments after that date are added back automatically.
+            Funds with a history date get their full purchase history too, so their yearly return (XIRR) shows straight away.
             Holdings not in the statement (EPF, NPS, FDs and so on) stay as they are. Funds you split into two rows, like a balanced advantage fund, are
             best skipped and updated by hand.
           </p>
@@ -216,8 +218,8 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
             <b>Consolidated Account Statement</b>). Either one covers all your mutual funds.
           </li>
           <li>
-            Choose <b>Detailed</b> (it includes the closing values Stash reads), a period such as <b>Specific period</b> up to today, your email, and a password
-            you'll remember.
+            Choose <b>Detailed</b> (it includes the closing values Stash reads), a <b>Specific period</b> from before your first investment (for example 01-Jan-2000)
+            up to today, your email, and a password you'll remember. Starting before your first investment lets Stash work out each fund's yearly return.
           </li>
           <li>The PDF arrives by email within minutes. Save it, then click <b>Import CAS statement…</b> here.</li>
         </ol>

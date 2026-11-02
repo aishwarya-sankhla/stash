@@ -1,7 +1,7 @@
 import { ChevronDown, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { addMoney, daysBetween, nextMonth, sipCoveredMonth } from '../finance'
-import { formatDate, formatINR, formatPct } from '../format'
+import { addMoney, daysBetween, holdingReturn, nextMonth, sipCoveredMonth } from '../finance'
+import { formatDate, formatINR, formatMonth, formatPct, formatRate } from '../format'
 import { ASSET_CLASS_LABELS, type AssetClass, type Holding } from '../types'
 import { ASSET_STYLE, IconTile, MoneyInput } from './ui'
 
@@ -43,6 +43,9 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
   }
 
   const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
+  // The yearly return (XIRR) accounts for when each rupee went in; the simple gain doesn't, so SIPs skew it.
+  const yearly = holdingReturn(h)
+  const shownReturn = yearly?.rate ?? ret
   const [icon, tint] = ASSET_STYLE[h.assetClass]
   const updated = updatedLabel(h, today)
 
@@ -50,7 +53,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
     e.preventDefault()
     const amount = Number(topUp)
     if (!(amount > 0)) return
-    onChange(addMoney(h, amount))
+    onChange(addMoney(h, amount, today))
     setTopUp('')
   }
 
@@ -82,9 +85,18 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
           </span>
         </span>
       </span>
-      <span className={`tag ${ret >= 0 ? 'ok' : 'over'}`}>
-        {ret >= 0 ? '+' : ''}
-        {formatPct(ret)}
+      <span
+        className={`tag ${shownReturn >= 0 ? 'ok' : 'over'}`}
+        title={
+          yearly
+            ? `Yearly return (XIRR) since ${formatMonth(yearly.since.slice(0, 7))}, counting when each rupee went in. Simple gain on the amount invested: ${ret >= 0 ? '+' : ''}${formatPct(ret)}.`
+            : h.assetClass === 'cash'
+              ? 'Simple gain on the amount invested. Cash has no yearly return here, since its value changes when you spend or save.'
+              : 'Simple gain on the amount invested. The yearly return (XIRR) shows once Stash has a year of dated history for this holding; import a CAS statement that covers your first purchase to get it now.'
+        }
+      >
+        {shownReturn >= 0 ? '+' : ''}
+        {yearly ? `${formatRate(yearly.rate)}/yr` : formatPct(ret)}
       </span>
       <span className="fd-value">
         <MoneyInput value={h.currentValue} onCommit={(n) => onChange({ ...h, currentValue: n, valueUpdated: today })} label={`${h.name} current value`} />

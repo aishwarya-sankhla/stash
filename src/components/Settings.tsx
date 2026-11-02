@@ -117,6 +117,21 @@ export function Settings({ data, setData }: { data: AppData; setData: SetData })
             />
             <span className="muted small">Credit cards, personal loans. Exclude home loans.</span>
           </label>
+          <label>
+            Retirement age
+            <input type="number" min="30" max="80" value={p.retirementAge} onChange={(e) => update({ retirementAge: Number(e.target.value) || 0 })} />
+          </label>
+          <label>
+            Income tax slab
+            <select value={p.taxSlab} onChange={(e) => update({ taxSlab: Number(e.target.value) })}>
+              {[0, 5, 10, 15, 20, 25, 30].map((rate) => (
+                <option key={rate} value={rate}>
+                  {rate}%
+                </option>
+              ))}
+            </select>
+            <span className="muted small">The rate on your highest rupee of income. Used to compare FDs, debt and arbitrage funds after tax.</span>
+          </label>
           <label className="check">
             <input type="checkbox" checked={p.hasHealthInsurance} onChange={(e) => update({ hasHealthInsurance: e.target.checked })} />
             I have health insurance

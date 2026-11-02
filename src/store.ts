@@ -10,6 +10,7 @@ import {
   type AssetClass,
   type Holding,
   type FixedDeposit,
+  type Flow,
   type Goal,
   type NetWorthSnapshot,
   type Profile,
@@ -89,7 +90,20 @@ function toHolding(v: unknown): Holding | null {
   if (/^IN[A-Z0-9]{10}$/.test(text(v.isin))) holding.isin = text(v.isin)
   const sip = toSip(v.sip)
   if (sip) holding.sip = sip
+  // Data saved before Stash tracked cash flows: start measuring returns from the last known value.
+  holding.flows = Array.isArray(v.flows)
+    ? toFlows(v.flows)
+    : currentValue > 0
+      ? [{ date: holding.valueUpdated ?? isoDate(), amount: currentValue }]
+      : []
   return holding
+}
+
+function toFlows(v: unknown[]): Flow[] {
+  return v
+    .filter((f): f is Json => isObject(f) && DATE.test(text(f.date)) && finite(f.amount) !== null && f.amount !== 0)
+    .map((f) => ({ date: text(f.date), amount: f.amount as number }))
+    .sort((a, b) => a.date.localeCompare(b.date))
 }
 
 function toSip(v: unknown): Sip | null {
@@ -151,6 +165,8 @@ function toProfile(v: unknown): Profile {
     highInterestDebt: nonNegative(p.highInterestDebt, d.highInterestDebt),
     hasHealthInsurance: p.hasHealthInsurance === true,
     hasTermInsurance: p.hasTermInsurance === true,
+    retirementAge: finite(p.retirementAge) !== null && (p.retirementAge as number) >= 30 && (p.retirementAge as number) <= 80 ? (p.retirementAge as number) : d.retirementAge,
+    taxSlab: [0, 5, 10, 15, 20, 25, 30].includes(p.taxSlab as number) ? (p.taxSlab as number) : d.taxSlab,
     confirmed: p.confirmed === true,
   }
 }

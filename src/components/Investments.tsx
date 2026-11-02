@@ -1,8 +1,8 @@
 import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { fdValue, isoDate, totalsByClass } from '../finance'
-import { formatINR, formatPct, newId } from '../format'
+import { fdValue, isoDate, portfolioReturn, totalsByClass } from '../finance'
+import { formatINR, formatMonth, formatPct, formatRate, newId } from '../format'
 import type { SetData } from '../store'
 import { ASSET_CLASS_LABELS, type AppData, type AssetClass, type Holding } from '../types'
 import { CasImport } from './CasImport'
@@ -26,7 +26,7 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
     if (!name.trim() || !(inv >= 0) || !(cur >= 0)) return
     setData((d) => ({
       ...d,
-      holdings: [...d.holdings, { id: newId(), name: name.trim(), assetClass, invested: inv, currentValue: cur, valueUpdated: isoDate() }],
+      holdings: [...d.holdings, { id: newId(), name: name.trim(), assetClass, invested: inv, currentValue: cur, valueUpdated: isoDate(), flows: cur > 0 ? [{ date: isoDate(), amount: cur }] : [] }],
     }))
     setName('')
     setInvested('')
@@ -40,6 +40,7 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
   const totalInvested = data.holdings.reduce((s, h) => s + h.invested, 0) + data.fds.reduce((s, f) => s + f.principal, 0)
   const totalValue = data.holdings.reduce((s, h) => s + h.currentValue, 0) + data.fds.reduce((s, f) => s + fdValue(f, today), 0)
   const gain = totalValue - totalInvested
+  const yearly = portfolioReturn(data, today)
   const byClass = totalsByClass(data, today)
   const mix = CLASSES.filter((c) => byClass[c] > 0).map((c) => ({ cls: c, name: shortLabel(c), value: byClass[c] }))
 
@@ -50,7 +51,17 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
         <Stat label="Current value" value={formatINR(totalValue)} icon={Gem} tint="lilac" />
         <Stat label="Invested" value={formatINR(totalInvested)} icon={PiggyBank} tint="sky" />
         <Stat label="Total return" value={formatINR(gain)} icon={gain >= 0 ? TrendingUp : TrendingDown} tint={gain >= 0 ? 'mint' : 'rose'} tone={gain >= 0 ? 'pos' : 'neg'}>
-          {totalInvested > 0 && <div className="stat-foot">{formatPct(gain / totalInvested)} all time</div>}
+          {totalInvested > 0 && (
+            <div className="stat-foot">
+              {formatPct(gain / totalInvested)} all time
+              {yearly && (
+                <span title={`Yearly return (XIRR) across your holdings and FDs since ${formatMonth(yearly.since.slice(0, 7))}, counting when each rupee went in. Cash holdings are left out.`}>
+                  {' · '}
+                  <b>{formatRate(yearly.rate)} a year</b> (XIRR)
+                </span>
+              )}
+            </div>
+          )}
         </Stat>
       </div>
       <form className="card composer" onSubmit={submit}>
