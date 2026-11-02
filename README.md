@@ -25,7 +25,7 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 
 ## What Stash does
 
-- **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category, six-month trend.
+- **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category with the change from the previous month (switch to **vs last month** for a side-by-side bar chart), six-month trend.
 - **Transactions**: add, edit, search and delete income and expenses, or import expenses logged on an iPhone. Hover over a row and click the pencil to edit it.
 - **Budgets**: monthly limits per expense category.
 - **Investments**: holdings by asset class with returns, monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).

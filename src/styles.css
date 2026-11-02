@@ -195,6 +195,7 @@ input.month { border-radius: 999px; background: var(--surface); font-weight: 500
 .segmented { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--sunk); }
 .segmented button { border: none; background: none; padding: 0.5rem 0.95rem; color: var(--ink-2); }
 .segmented button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(23, 20, 31, 0.12); }
+.segmented.small button { padding: 0.35rem 0.8rem; font-size: 0.85rem; }
 .amount-field {
   display: inline-flex; align-items: center; gap: 0.2rem; padding-left: 0.85rem;
   border: 1px solid var(--line); border-radius: 13px; background: var(--field);
