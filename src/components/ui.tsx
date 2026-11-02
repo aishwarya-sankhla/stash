@@ -11,6 +11,7 @@ import {
   Pizza,
   KeyRound,
   Landmark,
+  LifeBuoy,
   Laptop,
   Package,
   Plane,
@@ -168,6 +169,20 @@ export function MoneyInput({ value, onCommit, label }: { value: number; onCommit
 
 export function MonthPicker({ value, onChange }: { value: string; onChange: (month: string) => void }) {
   return <input className="month" type="month" value={value} onChange={(e) => e.target.value && onChange(e.target.value)} />
+}
+
+/** Lifebuoy button that marks a holding or FD as emergency money. Cash holdings always count, so theirs is locked on. */
+export function EmergencyToggle({ on, locked = false, onToggle }: { on: boolean; locked?: boolean; onToggle: () => void }) {
+  const title = locked
+    ? 'Cash always counts towards your emergency fund'
+    : on
+      ? 'Counts towards your emergency fund. Click to count it as a long-term investment instead.'
+      : 'Count this towards your emergency fund'
+  return (
+    <button type="button" className={`icon emergency ${on || locked ? 'on' : ''}`} aria-pressed={on || locked} aria-label={title} title={title} disabled={locked} onClick={onToggle}>
+      <LifeBuoy size={15} />
+    </button>
+  )
 }
 
 export function Progress({ fraction }: { fraction: number }) {

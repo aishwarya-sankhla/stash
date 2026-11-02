@@ -231,24 +231,32 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
   // or the long-term mix, which would otherwise push dated money into equity by age.
   const goals = data.goals.map((g) => goalStatus(g, data, currentMonth, target.equity))
   const goalHoldingIds = new Set(goals.flatMap((g) => g.holdings.map((h) => h.id)))
-  const longTerm = { ...data, holdings: data.holdings.filter((h) => !goalHoldingIds.has(h.id)) }
+  const ungoaled = data.holdings.filter((h) => !goalHoldingIds.has(h.id))
+  // Holdings and FDs switched to "emergency fund" are emergency money, so they leave the long-term mix too.
+  const emergencyHoldings = ungoaled.filter((h) => h.emergency)
+  const emergencyFds = data.fds.filter((fd) => fd.emergency)
+  const longTerm = { ...data, holdings: ungoaled.filter((h) => !h.emergency), fds: data.fds.filter((fd) => !fd.emergency) }
 
   // --- Emergency fund ------------------------------------------------------
   const classTotals = totalsByClass(longTerm, today)
   const emergencyTarget = avg.expenses * EMERGENCY_MONTHS
-  const emergencyCurrent = classTotals.cash
+  const markedEmergency = emergencyHoldings.reduce((s, h) => s + h.currentValue, 0) + emergencyFds.reduce((s, fd) => s + fdValue(fd, today), 0)
+  const emergencyCurrent = classTotals.cash + markedEmergency
   const emergencyShortfall = Math.max(0, emergencyTarget - emergencyCurrent)
   if (avg.monthsUsed > 0) {
     const why = [
       `Target: ${EMERGENCY_MONTHS} months × average expenses of ${formatINR(avg.expenses)} = ${formatINR(emergencyTarget)}.`,
-      `Counted: holdings with the Cash class that aren't linked to a goal = ${formatINR(emergencyCurrent)}.`,
+      `Counted: Cash holdings ${formatINR(classTotals.cash)}${
+        markedEmergency > 0 ? ` + ${listNames([...emergencyHoldings, ...emergencyFds.map((fd) => ({ name: `${fd.bank} FD` }))].map((x) => x.name))} ${formatINR(markedEmergency)}` : ''
+      } = ${formatINR(emergencyCurrent)}. Money linked to a goal doesn't count.`,
+      'Count an FD or another holding by switching on its emergency fund (lifebuoy) button on the Investments tab.',
     ]
     if (emergencyShortfall > 0) {
       add({
         id: 'emergency',
         severity: emergencyCurrent < avg.expenses * 3 ? 'warning' : 'tip',
         title: `Build your emergency fund (${formatINR(emergencyCurrent)} of ${formatINR(emergencyTarget)})`,
-        detail: `Keep ${EMERGENCY_MONTHS} months of expenses in a savings account, sweep FD or liquid fund. Add holdings with the "Cash" class on the Investments tab to count them.`,
+        detail: `Keep ${EMERGENCY_MONTHS} months of expenses in a savings account, sweep FD, liquid or arbitrage fund. On the Investments tab, add your savings account as a Cash holding, and switch on the lifebuoy button on any FD or fund you keep for emergencies.`,
         why: [...why, `Short by ${formatINR(emergencyShortfall)}. Under 3 months of expenses is marked "heads up".`],
       })
     } else {
@@ -272,7 +280,7 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
       gold: classTotals.gold / portfolioValue,
     }
     const why = [
-      `Long-term portfolio: ${formatINR(portfolioValue)} in equity, debt (including FDs) and gold. Cash, real estate and goal money are left out.`,
+      `Long-term portfolio: ${formatINR(portfolioValue)} in equity, debt (including FDs) and gold. Cash, emergency fund, real estate and goal money are left out.`,
       `Now: equity ${formatPct(currentAllocation.equity)}, debt ${formatPct(currentAllocation.debt)}, gold ${formatPct(currentAllocation.gold)}.`,
       targetRule,
       `A class is flagged when it is more than ${formatPct(DRIFT_THRESHOLD)} (percentage points) away from its target.`,
@@ -360,7 +368,7 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     const { years, inflator } = retirement
     const today$ = (n: number) => `${formatCompactINR(n)} (${formatCompactINR(n / inflator)} in today's money)`
     const why = [
-      `Today: ${formatINR(retirement.current)} in long-term holdings (equity, debt including PF, NPS and FDs, and gold; not cash, real estate or goal money), plus SIPs of ${formatINR(retirementSips)}/month into them.`,
+      `Today: ${formatINR(retirement.current)} in long-term holdings (equity, debt including PF, NPS and FDs, and gold; not cash, emergency fund, real estate or goal money), plus SIPs of ${formatINR(retirementSips)}/month into them.`,
       `Growth: ${formatRate(retirement.assumedReturn)} a year, from your target mix at ${formatRate(EXPECTED_RETURN.equity)} for equity, ${formatRate(EXPECTED_RETURN.debt)} for debt and ${formatRate(EXPECTED_RETURN.gold)} for gold, for ${years} years. Projected: ${today$(retirement.projected)}.`,
       `Expenses: ${formatINR(avg.expenses * 12)} a year now becomes ${formatINR(avg.expenses * 12 * inflator)} a year at ${profile.retirementAge}, with ${formatPct(INFLATION)} inflation.`,
       `Needed: ${RETIREMENT_MULTIPLE} × yearly expenses at retirement = ${today$(retirement.needed)}. That lets you withdraw about 3.3% a year, a cautious rate given India's inflation.`,
@@ -428,7 +436,7 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
   }
 
   if (slab >= 0.2) {
-    const newFds = data.fds.filter((fd) => fd.maturityDate > today && daysBetween(fd.startDate, today) <= 90 && fd.startDate <= today)
+    const newFds = data.fds.filter((fd) => !fd.emergency && fd.maturityDate > today && daysBetween(fd.startDate, today) <= 90 && fd.startDate <= today)
     const debtSips = data.holdings.filter((h) => h.sip && isDebtFund(h))
     if (newFds.length > 0 || debtSips.length > 0) {
       const afterTax = (r: number) => r * (1 - withCess(slab))

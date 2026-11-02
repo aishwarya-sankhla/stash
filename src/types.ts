@@ -40,6 +40,8 @@ export interface Holding {
    * its value on the day tracking started, so returns are measured from then.
    */
   flows?: Flow[]
+  /** Set aside as emergency money: counts towards the emergency fund instead of the long-term mix. Cash always counts. */
+  emergency?: boolean
 }
 
 /** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */
@@ -50,6 +52,8 @@ export interface FixedDeposit {
   rate: number // % per year
   startDate: string // YYYY-MM-DD
   maturityDate: string // YYYY-MM-DD
+  /** Set aside as emergency money: counts towards the emergency fund instead of the long-term mix. */
+  emergency?: boolean
 }
 
 export type RiskTolerance = 'conservative' | 'moderate' | 'aggressive'

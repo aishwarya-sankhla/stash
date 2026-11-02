@@ -90,6 +90,7 @@ function toHolding(v: unknown): Holding | null {
   if (/^IN[A-Z0-9]{10}$/.test(text(v.isin))) holding.isin = text(v.isin)
   const sip = toSip(v.sip)
   if (sip) holding.sip = sip
+  if (v.emergency === true) holding.emergency = true
   // Data saved before Stash tracked cash flows: start measuring returns from the last known value.
   holding.flows = Array.isArray(v.flows)
     ? toFlows(v.flows)
@@ -124,7 +125,7 @@ function toFixedDeposit(v: unknown): FixedDeposit | null {
   const maturityDate = text(v.maturityDate)
   if (!text(v.bank) || principal === null || principal <= 0 || rate === null || rate < 0 || rate > 50) return null
   if (!DATE.test(startDate) || !DATE.test(maturityDate) || maturityDate <= startDate) return null
-  return { id: text(v.id) || newId(), bank: text(v.bank), principal, rate, startDate, maturityDate }
+  return { id: text(v.id) || newId(), bank: text(v.bank), principal, rate, startDate, maturityDate, ...(v.emergency === true ? { emergency: true } : {}) }
 }
 
 function toSnapshot(v: unknown): NetWorthSnapshot | null {

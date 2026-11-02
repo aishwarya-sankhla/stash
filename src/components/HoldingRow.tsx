@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { addMoney, daysBetween, holdingReturn, nextMonth, sipCoveredMonth } from '../finance'
 import { formatDate, formatINR, formatMonth, formatPct, formatRate } from '../format'
 import { ASSET_CLASS_LABELS, type AssetClass, type Holding } from '../types'
-import { ASSET_STYLE, IconTile, MoneyInput } from './ui'
+import { ASSET_STYLE, EmergencyToggle, IconTile, MoneyInput } from './ui'
 
 const STALE_DAYS = 60
 const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
@@ -82,6 +82,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
           <span className="chip-sub">
             {ASSET_CLASS_LABELS[h.assetClass].split(' (')[0]} · {formatINR(h.invested)} invested
             {h.sip && ` · SIP ${formatINR(h.sip.amount)}/mo`}
+            {h.emergency && h.assetClass !== 'cash' && ' · Emergency fund'}
           </span>
         </span>
       </span>
@@ -102,6 +103,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
         <MoneyInput value={h.currentValue} onCommit={(n) => onChange({ ...h, currentValue: n, valueUpdated: today })} label={`${h.name} current value`} />
         <span className={`chip-sub ${updated.stale ? 'stale' : ''}`}>{updated.text}</span>
       </span>
+      <EmergencyToggle on={!!h.emergency} locked={h.assetClass === 'cash'} onToggle={() => onChange({ ...h, emergency: !h.emergency })} />
       <button className={`icon manage ${open ? 'open' : ''}`} title="Edit, add money or set up a SIP" aria-expanded={open} onClick={toggle}>
         <ChevronDown size={16} />
       </button>

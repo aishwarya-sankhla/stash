@@ -4,7 +4,7 @@ import { daysBetween, fdValue, isoDate } from '../finance'
 import { formatDate, formatINR, newId } from '../format'
 import type { SetData } from '../store'
 import type { AppData, FixedDeposit } from '../types'
-import { IconTile } from './ui'
+import { EmergencyToggle, IconTile } from './ui'
 
 const oneYearLater = (date: string) => {
   const [y, m, d] = date.split('-').map(Number)
@@ -58,7 +58,8 @@ export function FixedDeposits({ data, setData }: { data: AppData; setData: SetDa
     const r = Number(rate)
     if (maturityDate <= startDate) return setError('Maturity date must be after the start date.')
     if (!(p > 0) || !(r >= 0 && r <= 50)) return setError('Enter an amount and an interest rate between 0 and 50%.')
-    const fd = { id: editing ?? newId(), bank: bank.trim(), principal: p, rate: r, startDate, maturityDate }
+    // Editing keeps settings the form doesn't show, such as the emergency fund switch.
+    const fd = { ...data.fds.find((f) => f.id === editing), id: editing ?? newId(), bank: bank.trim(), principal: p, rate: r, startDate, maturityDate }
     setData((d) => ({ ...d, fds: editing ? d.fds.map((f) => (f.id === editing ? fd : f)) : [...d.fds, fd] }))
     reset()
   }
@@ -133,6 +134,7 @@ export function FixedDeposits({ data, setData }: { data: AppData; setData: SetDa
                     {fd.bank}
                     <span className="chip-sub">
                       {formatINR(fd.principal)} at {fd.rate}% · {formatDate(fd.startDate)} → {formatDate(fd.maturityDate)}
+                      {fd.emergency && ' · Emergency fund'}
                     </span>
                   </span>
                 </span>
@@ -142,6 +144,7 @@ export function FixedDeposits({ data, setData }: { data: AppData; setData: SetDa
                   <span className="chip-sub">{formatINR(fdValue(fd, fd.maturityDate))} at maturity</span>
                 </span>
                 <span className="row-actions">
+                  <EmergencyToggle on={!!fd.emergency} onToggle={() => setData((d) => ({ ...d, fds: d.fds.map((f) => (f.id === fd.id ? { ...f, emergency: !f.emergency } : f)) }))} />
                   <button className="icon edit" title="Edit" onClick={() => edit(fd)}>
                     <Pencil size={14} />
                   </button>
@@ -154,7 +157,7 @@ export function FixedDeposits({ data, setData }: { data: AppData; setData: SetDa
           })}
         </ul>
       )}
-      <p className="muted small">Values assume a cumulative FD: interest reinvested and compounded quarterly. FDs count as debt in your investment mix.</p>
+      <p className="muted small">Values assume a cumulative FD: interest reinvested and compounded quarterly. FDs count as debt in your investment mix; switch on the lifebuoy to count one as emergency money instead.</p>
     </section>
   )
 }

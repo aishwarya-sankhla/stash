@@ -18,7 +18,8 @@ describe('parseData', () => {
           { id: 'h3', name: 'Debt fund', assetClass: 'debt', invested: 9, currentValue: 9, flows: [{ date: '2026-05-01', amount: 9 }, { date: '2026-02-01', amount: 4 }, { date: 'soon', amount: 1 }, { date: '2026-03-01', amount: 0 }] },
         ],
         fds: [
-          { id: 'f1', bank: 'SBI', principal: 100000, rate: 7.1, startDate: '2026-01-01', maturityDate: '2027-01-01' },
+          { id: 'f1', bank: 'SBI', principal: 100000, rate: 7.1, startDate: '2026-01-01', maturityDate: '2027-01-01', emergency: 'yes' },
+          { id: 'f4', bank: 'HDFC', principal: 50000, rate: 7, startDate: '2026-01-01', maturityDate: '2027-01-01', emergency: true },
           { id: 'f2', bank: 'Backwards', principal: 100000, rate: 7, startDate: '2027-01-01', maturityDate: '2026-01-01' },
           { id: 'f3', bank: 'Typo', principal: 100000, rate: 710, startDate: '2026-01-01', maturityDate: '2027-01-01' },
         ],
@@ -50,7 +51,10 @@ describe('parseData', () => {
       { date: '2026-02-01', amount: 4 },
       { date: '2026-05-01', amount: 9 },
     ])
-    expect(data.fds.map((f) => f.id)).toEqual(['f1'])
+    expect(data.fds.map((f) => [f.id, f.emergency])).toEqual([
+      ['f1', undefined], // only a real true switches it on
+      ['f4', true],
+    ])
     expect(data.budgets).toEqual({ Dining: 6000 })
     expect(data.profile).toMatchObject({ age: 30, riskTolerance: 'moderate', confirmed: true })
     // Goals keep only links to holdings that survived parsing (h1 was dropped), once each

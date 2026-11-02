@@ -84,7 +84,7 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
         <section className="card">
           <div className="card-head">
             <h2>Holdings</h2>
-            <span className="muted small">Click a value to update it · ⌄ to add money or set up a SIP</span>
+            <span className="muted small">Click a value to update it · ⌄ to add money or set up a SIP · lifebuoy for emergency money</span>
           </div>
           {data.holdings.length === 0 ? (
             <p className="empty">No holdings yet. Cash holdings count as your emergency fund.</p>

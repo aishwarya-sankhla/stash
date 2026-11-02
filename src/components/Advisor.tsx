@@ -181,7 +181,7 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
           <div className="legend-inline">
             <i style={{ background: 'var(--ink)' }} /> Now <b className="target-mark" /> Target
           </div>
-          <p className="muted small">Long-term money only: excludes cash (your emergency fund), real estate and holdings linked to goals.</p>
+          <p className="muted small">Long-term money only: excludes your emergency fund (cash and anything switched to emergency fund), real estate and holdings linked to goals.</p>
         </section>
       </div>
       <p className="disclaimer">

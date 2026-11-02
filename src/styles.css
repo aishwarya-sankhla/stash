@@ -240,7 +240,7 @@ input[type='checkbox'] { width: 1.15rem; height: 1.15rem; accent-color: var(--in
 .fd-value { text-align: right; font-family: var(--display); font-weight: 700; font-variant-numeric: tabular-nums; }
 .fd-value .chip-sub { font-family: var(--body); }
 .tag.neutral { background: var(--sunk); color: var(--ink-2); }
-.holding-row { grid-template-columns: minmax(0, 1fr) auto auto auto auto !important; }
+.holding-row { grid-template-columns: minmax(0, 1fr) auto auto auto auto auto !important; }
 .chip-sub.stale { color: #b45309; }
 button.icon.manage { opacity: 1; color: var(--ink-2); transition: transform 0.2s, background 0.15s; }
 button.icon.manage:hover { color: var(--ink); background: var(--sunk); }
@@ -386,6 +386,9 @@ button.icon.manage.open { transform: rotate(180deg); }
 /* ---------- Editing ---------- */
 .row-actions { display: inline-flex; gap: 0.1rem; }
 button.icon.edit:hover { color: var(--ink); background: var(--sunk); }
+button.icon.emergency { opacity: 0.4; }
+button.icon.emergency:hover, button.icon.emergency.on { opacity: 1; color: #8f6b00; background: #fff4cc; }
+button.icon.emergency:disabled { cursor: default; }
 button.icon:focus-visible { opacity: 1; }
 .tx-list li.editing { display: block; background: var(--field); }
 .tx-edit { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }

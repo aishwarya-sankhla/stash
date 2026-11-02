@@ -176,6 +176,24 @@ describe('buildReport rebalancing', () => {
   })
 })
 
+describe('emergency fund switch', () => {
+  it('counts switched-on FDs and funds as emergency money and keeps them out of the long-term mix', () => {
+    const fd = { id: 'sweep', bank: 'HDFC', principal: 100000, rate: 7, startDate: '2026-10-01', maturityDate: '2027-10-01', emergency: true }
+    const arbitrage = { ...holding('debt', 200000), id: 'arb', name: 'Arbitrage fund', emergency: true }
+    const report = buildReport(
+      data({ holdings: [holding('cash', 50000), arbitrage, holding('equity', 700000), holding('debt', 300000)], fds: [fd], profile: { ...DEFAULT_DATA.profile, confirmed: true } }),
+      '2026-11',
+      '2026-11-02',
+    )
+    // ₹50,000 cash + ₹2,00,000 fund + the FD's value on 2 Nov (32 days of interest)
+    expect(report.emergencyCurrent).toBeCloseTo(250000 + fdValue(fd, '2026-11-02'), 0)
+    expect(report.portfolioValue).toBe(1000000)
+    expect(report.currentAllocation).toEqual({ equity: 0.7, debt: 0.3, gold: 0 })
+    // A sweep FD kept for emergencies isn't new money to steer towards arbitrage funds
+    expect(report.advice.some((a) => a.id === 'tax-debt')).toBe(false)
+  })
+})
+
 describe('buildReport monthly plan', () => {
   const months = [tx('2026-09-01', 'income', 80000), tx('2026-09-05', 'expense', 50000)]
 
