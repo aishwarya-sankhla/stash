@@ -15,6 +15,7 @@ describe('parseData', () => {
         holdings: [
           { id: 'h1', name: 'Coin', assetClass: 'crypto', invested: 1, currentValue: 1 },
           { id: 'h2', name: 'Index fund', assetClass: 'equity', invested: 10, currentValue: 12, valueUpdated: '2026-10-01', sip: { amount: 500, day: 31, lastApplied: '2026-09' } },
+          { id: 'h4', name: 'Imported fund', assetClass: 'equity', invested: 100, currentValue: 126000, valueUpdated: '2026-09-30', flows: [{ date: '2026-10-10', amount: 5000 }] },
           { id: 'h3', name: 'Debt fund', assetClass: 'debt', invested: 9, currentValue: 9, flows: [{ date: '2026-05-01', amount: 9 }, { date: '2026-02-01', amount: 4 }, { date: 'soon', amount: 1 }, { date: '2026-03-01', amount: 0 }] },
         ],
         fds: [
@@ -42,12 +43,18 @@ describe('parseData', () => {
       { id: 'a', date: '2026-10-02', type: 'expense', category: 'Other', amount: 100, note: 'odd category' },
       { id: 'd', date: '2026-10-03', type: 'income', category: 'Salary', amount: 5000, note: '' },
     ])
-    expect(data.holdings.map((h) => h.id)).toEqual(['h2', 'h3'])
+    expect(data.holdings.map((h) => h.id)).toEqual(['h2', 'h4', 'h3'])
     expect(data.holdings[0].sip).toBeUndefined() // day 31 isn't a valid SIP day; the holding itself is kept
     // Saved before cash flows existed: returns are measured from the last known value
     expect(data.holdings[0].flows).toEqual([{ date: '2026-10-01', amount: 12 }])
-    // Bad dates and zero amounts dropped, the rest sorted by date
+    // Its history starts after the value date (a statement import dropped the start): rebuilt from the
+    // value then, which is today's value less the SIP added at cost since
     expect(data.holdings[1].flows).toEqual([
+      { date: '2026-09-30', amount: 121000 },
+      { date: '2026-10-10', amount: 5000 },
+    ])
+    // Bad dates and zero amounts dropped, the rest sorted by date
+    expect(data.holdings[2].flows).toEqual([
       { date: '2026-02-01', amount: 4 },
       { date: '2026-05-01', amount: 9 },
     ])

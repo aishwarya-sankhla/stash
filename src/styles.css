@@ -380,6 +380,7 @@ button.icon.manage.open { transform: rotate(180deg); }
 .guide h3 { font-size: 0.98rem; margin: 1.1rem 0 0.35rem; }
 .guide p, .guide li { line-height: 1.55; }
 .guide ol { padding-left: 1.3rem; margin: 0.3rem 0 0.5rem; display: grid; gap: 0.3rem; }
+.cas-outline textarea { width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; line-height: 1.45; padding: 0.7rem; border-radius: 12px; border: 1px solid var(--line); background: var(--field); color: var(--ink-2); resize: vertical; margin: 0.4rem 0 0.6rem; }
 .app-version { text-align: center; margin: 0.5rem 0 0; }
 .subhead { font-size: 1rem; margin: 1.3rem 0 0.2rem; }
 

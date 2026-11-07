@@ -91,12 +91,13 @@ function toHolding(v: unknown): Holding | null {
   const sip = toSip(v.sip)
   if (sip) holding.sip = sip
   if (v.emergency === true) holding.emergency = true
-  // Data saved before Stash tracked cash flows: start measuring returns from the last known value.
-  holding.flows = Array.isArray(v.flows)
-    ? toFlows(v.flows)
-    : currentValue > 0
-      ? [{ date: holding.valueUpdated ?? isoDate(), amount: currentValue }]
-      : []
+  holding.flows = Array.isArray(v.flows) ? toFlows(v.flows) : []
+  // Returns are measured from the first cash flow, so one must exist by the date the value was last known.
+  // Data saved before Stash tracked cash flows, or by version 0.7.2's test build, whose statement import
+  // could drop it, starts from that value instead (less money added at cost since then).
+  const known = holding.valueUpdated ?? isoDate()
+  const since = holding.flows.reduce((sum, f) => sum + f.amount, 0)
+  if (!holding.flows.some((f) => f.date <= known) && currentValue - since > 0) holding.flows.unshift({ date: known, amount: currentValue - since })
   return holding
 }
 

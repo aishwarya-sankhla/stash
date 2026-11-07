@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyCasImport, matchHolding, parseCasText } from './cas'
+import { applyCasImport, casOutline, matchHolding, parseCasText } from './cas'
 import { DEFAULT_DATA, type Holding } from './types'
 
 // Lines as pdf.js extracts them from a detailed CAMS/KFintech CAS (names and numbers made up).
@@ -72,6 +72,105 @@ describe('parseCasText', () => {
   })
 })
 
+describe('parseCasText on real statement layouts', () => {
+  // Shapes seen in real CAMS/KFintech statements: investor address before the first folio, "Folio No :" with a
+  // space, a holder-name line, and an ISIN whose value wraps behind the "Registrar :" label onto the next line.
+  const REAL = [
+    'Consolidated Account Statement',
+    'B-12, Rose Apartments',
+    'Folio No : 12345 / 67 PAN: ABCDE1234F KYC : OK PAN : OK',
+    'JOHN DOE',
+    'T123-Test Fund - Direct Growth - ISIN: INF769K Registrar : CAMS',
+    '01AB2(Advisor: ARN-28283)',
+    'Nominee 1: JANE DOE Nominee 2: Nominee 3:',
+    'Opening Unit Balance: 0.000',
+    '01-Jan-2024 Purchase - BSE - 1,000.00 10.000 100.0000 10.000',
+    'Closing Unit Balance: 10.000 NAV on 30-Jun-2024: INR 120.0000 Valuation on 30-Jun-2024: INR 1,200.00',
+    'Total Cost Value: 1,000.00',
+    'Folio No : 999 / 1',
+    '128TSGPG-Axis Long Term Equity Fund - Direct Growth (Advisor: DIRECT)',
+    '- ISIN: INF846K01EW2 Registrar : KFINTECH',
+    'Opening Unit Balance: 5.000',
+    'Closing Unit Balance: 5.000 NAV on 30-Jun-2024: INR 90.0000 Valuation on 30-Jun-2024: INR 450.00',
+  ]
+
+  it('stitches wrapped headers, completes a wrapped ISIN and ignores lines before the first folio', () => {
+    expect(parseCasText(REAL)).toEqual([
+      {
+        name: 'Test Fund - Direct Growth',
+        isin: 'INF769K01AB2',
+        units: 10,
+        navDate: '2024-06-30',
+        cost: 1000,
+        value: 1200,
+        flows: [{ date: '2024-01-01', amount: 1000 }],
+      },
+      // The ISIN is on the line after the name; units already held at the start, so no full history
+      { name: 'Axis Long Term Equity Fund - Direct Growth', isin: 'INF846K01EW2', units: 5, navDate: '2024-06-30', cost: null, value: 450, flows: null },
+    ])
+  })
+
+  it("outlines an unreadable statement without the investor's details", () => {
+    const outline = casOutline(REAL)
+    expect(outline).toContain('T000-Test Fund - Direct Growth - ISIN: INF000K Registrar : CAMS')
+    expect(outline).toContain('Closing Unit Balance: 00.000')
+    expect(outline).toContain('Folio No : 00000 / 00 PAN: XXXXX0000X KYC : OK PAN : OK\n[other line]\nT000-Test Fund')
+    for (const secret of ['Rose', 'ABCDE', 'JANE', 'JOHN', '12345', '1,200']) expect(outline).not.toContain(secret)
+  })
+})
+
+describe('parseCasText on an NSDL/CDSL depository statement', () => {
+  // The layout of the CAS that NSDL or CDSL send when you have a demat account (names and figures made up).
+  const DEPOSITORY = [
+    'FORM AND INVESTMENTS IN MUTUAL FUNDS',
+    'Folio No : 910112345678/0 Mode of Holding : Single Email id : ravi@example.com',
+    'D O Ravi Kumar A 101 Lake View Apartment CDSL/NSDL/Mutual Funds. We trust this initiative',
+    'ISIN : INF846K01EW2 UCC : RTA : KFIN',
+    'AMC Name : HDFC Mutual Fund',
+    'Scheme Name : HDFC Balanced Advantage Fund - Regular Plan - Growth Scheme Code : GFG',
+    'Folio No : 12345678/90 Mode of Holding : Single Email id : Please provide',
+    'RAVI KUMAR',
+    'ISIN : INF179K01830 UCC : MFHDFC1234 RTA : CAMS',
+    'AMC Name : ICICI Prudential Mutual Fund',
+    'Scheme Name : ICICI Prudential Medium Term Fund - Direct Plan -',
+    'Scheme Code : 8018',
+    'Growth',
+    'Folio No : 87654321/12 Mode of Holding : Single Email id : ravi@example.com',
+    'ISIN : INF109K016A6 UCC : RTA : CAMS',
+    'STATEMENT OF TRANSACTIONS FOR THE PERIOD FROM 01-09-2026 TO 30-09-2026',
+    'Axis Mutual Fund',
+    'MTDG - Axis Multicap Fund Direct Growth',
+    'ISIN : INF846K01EW2 UCC :',
+    '05-09-2026 1/120 - via Internet - DIRECT 5000.00 15.21 15.21 328.731 .25 0 0',
+    'MUTUAL FUND UNITS HELD AS ON 30-09-2026',
+    'Scheme Name ISIN Folio No. ARN Code Bal NAV (`) Valuation (`) Distributors Profit/ Profit/',
+    'Regular Direct terms - in (%)',
+    'Axis Multicap INF846K01EW2 DIRECT 7958.120 15.21 1,10,000.00 1,21,043.01 0 .59 0 11,043.01 10.04',
+    'Fund Direct Growth 123/4',
+    'HDFC Balanced',
+    'Advantage Fund - INF179K01830 12345678/90 ARN-0155 112.512 500.940 38,000.00 56,361.76 1.37 0 467.00 18,361.76 48.32',
+    'Regular Plan - Growth',
+    'Medium Term Fund - INF109K016A6 87654321/12 1004.950 40.9600 40,000.00 41,162.75 0 .70 0 1,162.75 2.91',
+    'DIRECT',
+  ]
+
+  it('reads each holdings row, taking names from the scheme headings and the value that equals units × NAV', () => {
+    const common = { navDate: '2026-09-30', flows: null }
+    expect(parseCasText(DEPOSITORY)).toEqual([
+      { name: 'Axis Multicap Fund Direct Growth', isin: 'INF846K01EW2', units: 7958.12, cost: 110000, value: 121043.01, ...common },
+      { name: 'HDFC Balanced Advantage Fund - Regular Plan - Growth', isin: 'INF179K01830', units: 112.512, cost: 38000, value: 56361.76, ...common },
+      // The scheme name wrapped around its "Scheme Code" line
+      { name: 'ICICI Prudential Medium Term Fund - Direct Plan - Growth', isin: 'INF109K016A6', units: 1004.95, cost: 40000, value: 41162.75, ...common },
+    ])
+  })
+
+  it('keeps names and addresses out of the outline even when a line mentions funds', () => {
+    const outline = casOutline(DEPOSITORY)
+    expect(outline).toContain('Scheme Name : HDFC Balanced Advantage Fund - Regular Plan - Growth Scheme Code : GFG')
+    for (const secret of ['Ravi', 'RAVI', 'Lake View', 'ravi@']) expect(outline).not.toContain(secret)
+  })
+})
+
 describe('matchHolding', () => {
   it('prefers the ISIN, then a close name, keeping Direct and Regular plans apart', () => {
     const fund = { name: 'HDFC Balanced Advantage Fund - Direct Plan - Growth Option', isin: 'INF179K01WA6', units: 1, navDate: null, cost: null, value: 1, flows: null }
@@ -120,5 +219,13 @@ describe('applyCasImport', () => {
     const history = [{ date: '2024-11-25', amount: 64000 }]
     const withHistory = applyCasImport({ ...DEFAULT_DATA, holdings: [existing] }, [{ fund: { ...fund, flows: history }, action: { kind: 'update', holdingId: 'axis' } }], '2026-10-27')
     expect(withHistory.holdings[0].flows).toEqual([...history, { date: '2026-10-25', amount: 5000 }])
+
+    // Tracked by Stash only since after the statement date: returns start from the statement's value
+    const trackedLater = { ...existing, flows: [{ date: '2026-10-26', amount: 70000 }] }
+    const rebased = applyCasImport({ ...DEFAULT_DATA, holdings: [trackedLater] }, [{ fund, action: { kind: 'update', holdingId: 'axis' } }], '2026-10-27')
+    expect(rebased.holdings[0].flows).toEqual([
+      { date: '2026-10-23', amount: 69391 },
+      { date: '2026-10-25', amount: 5000 },
+    ])
   })
 })

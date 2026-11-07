@@ -1,6 +1,6 @@
 import { FileUp } from 'lucide-react'
 import { useRef, useState, type FormEvent } from 'react'
-import { applyCasImport, guessAssetClass, matchHolding, parseCasText, type CasAction, type CasFund } from '../cas'
+import { applyCasImport, casOutline, guessAssetClass, matchHolding, parseCasText, type CasAction, type CasFund } from '../cas'
 import { isoDate } from '../finance'
 import { formatDate, formatINR } from '../format'
 import type { SetData } from '../store'
@@ -11,7 +11,7 @@ const CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
 
 type Row = { fund: CasFund; action: CasAction }
 
-/** Updates mutual fund holdings from a CAMS / KFintech CAS PDF, read entirely on this computer. */
+/** Updates mutual fund holdings from a CAS PDF (CAMS/KFintech or NSDL/CDSL), read entirely on this computer. */
 export function CasImport({ data, setData }: { data: AppData; setData: SetData }) {
   const fileInput = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<{ name: string; bytes: ArrayBuffer } | null>(null)
@@ -20,10 +20,15 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
   const [rows, setRows] = useState<Row[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  /** Privacy-safe outline of a statement that couldn't be read, for reporting it. */
+  const [outline, setOutline] = useState('')
+  const [copied, setCopied] = useState(false)
 
   async function read(name: string, bytes: ArrayBuffer, pwd?: string) {
     setBusy(true)
     setMessage('')
+    setOutline('')
+    setCopied(false)
     try {
       const { readPdfLines, CasPasswordError } = await import('../casPdf')
       let lines: string[]
@@ -41,7 +46,8 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
       const funds = parseCasText(lines)
       if (funds.length === 0) {
         reset()
-        setMessage(`No funds found in ${name}. Make sure it's a detailed CAS from CAMS or KFintech (not a summary or a demat statement).`)
+        setMessage(`No funds found in ${name}. Make sure it's a CAS from CAMS, KFintech, NSDL or CDSL (the detailed one from CAMS or KFintech, not the summary). If it is, Stash doesn't understand its layout yet.`)
+        setOutline(casOutline(lines))
         return
       }
       setRows(
@@ -120,7 +126,7 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
         />
       </div>
       <p className="muted small">
-        Fill in or update all your mutual funds at once from the free statement CAMS and KFintech email you. The PDF is read on this computer and its
+        Fill in or update all your mutual funds at once from the free statement CAMS, KFintech, NSDL or CDSL email you. The PDF is read on this computer and its
         password is never saved.
       </p>
 
@@ -209,6 +215,26 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
       )}
 
       {message && <p className="muted">{message}</p>}
+      {outline && (
+        <details className="guide cas-outline">
+          <summary>Help fix this: copy a privacy-safe outline of the statement</summary>
+          <p className="muted small">
+            This shows only the statement's structure, from the first folio on: fund names and labels, with every number replaced by 0. Your name, address, PAN,
+            email and nominees are left out. Check it below, then copy and share it so the reader can be fixed.
+          </p>
+          <textarea readOnly value={outline} rows={10} aria-label="Statement outline" />
+          <div className="row">
+            <button
+              onClick={async () => {
+                await navigator.clipboard.writeText(outline)
+                setCopied(true)
+              }}
+            >
+              {copied ? 'Copied' : 'Copy outline'}
+            </button>
+          </div>
+        </details>
+      )}
 
       <details className="guide">
         <summary>How to get your CAS statement (free, once a month)</summary>
@@ -224,8 +250,9 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
           <li>The PDF arrives by email within minutes. Save it, then click <b>Import CAS statement…</b> here.</li>
         </ol>
         <p className="muted small">
-          Requesting the statement needs the internet; reading it in Stash doesn't. Demat statements from NSDL/CDSL use a different format and aren't
-          supported yet.
+          Requesting the statement needs the internet; reading it in Stash doesn't. If you have a demat account, the monthly CAS comes from NSDL or CDSL
+          instead: Stash reads the mutual funds in it (not shares), with values but without purchase history, so their yearly return starts from the
+          import.
         </p>
       </details>
     </section>

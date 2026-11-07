@@ -171,7 +171,7 @@ Instead of typing in each fund's value, import your Consolidated Account Stateme
 2. Choose **Detailed** (not Summary) and a **Specific period** from before your first investment (for example 01-Jan-2000) up to today. Enter your email and a password for the PDF. Covering your first purchase lets Stash work out each fund's yearly return (XIRR).
 3. The statement arrives by email within a few minutes.
 
-Only the detailed CAS from CAMS or KFintech is supported. The NSDL/CDSL demat CAS and the summary CAS won't import.
+The detailed CAS from CAMS or KFintech works best. If you have a demat account, the monthly CAS you get by email comes from NSDL or CDSL instead; Stash reads the mutual funds in it (units, NAV, invested amount and value, but not shares or other demat holdings). That statement lists only the month's transactions, so funds imported from it start their yearly return from the import date. The summary CAS won't import.
 
 ### Import it
 
