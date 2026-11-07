@@ -1,12 +1,14 @@
 import { summarizeMonth } from '../finance'
 import { formatINR, formatMonth } from '../format'
 import type { SetData } from '../store'
-import { EXPENSE_CATEGORIES, type AppData } from '../types'
+import { X } from 'lucide-react'
+import { EXPENSE_CATEGORIES, FIXED_CATEGORIES, type AppData } from '../types'
 import { CategoryChip, MoneyInput, PageHeader, Progress } from './ui'
 
-function status(spent: number, limit: number) {
+function status(category: string, spent: number, limit: number) {
   if (spent > limit) return { text: `${formatINR(spent - limit)} over`, tone: 'over' }
-  if (spent >= limit * 0.8) return { text: `${formatINR(limit - spent)} left`, tone: 'near' }
+  // A fixed bill such as rent is paid in full, so reaching its budget is expected.
+  if (spent >= limit * 0.8 && !FIXED_CATEGORIES.includes(category)) return { text: `${formatINR(limit - spent)} left`, tone: 'near' }
   return { text: `${formatINR(limit - spent)} left`, tone: 'ok' }
 }
 
@@ -42,7 +44,7 @@ export function Budgets({ data, setData, currentMonth }: { data: AppData; setDat
           {budgeted.map((c) => {
             const limit = data.budgets[c]
             const s = spent[c] ?? 0
-            const st = status(s, limit)
+            const st = status(c, s, limit)
             return (
               <section key={c} className="card budget-card">
                 <div className="card-head">
@@ -52,8 +54,11 @@ export function Budgets({ data, setData, currentMonth }: { data: AppData; setDat
                 <div className="budget-amt">{formatINR(s)}</div>
                 <div className="budget-limit">
                   of <MoneyInput value={limit} onCommit={(n) => setLimit(c, String(n))} label={`${c} monthly limit (0 removes it)`} />
+                  <button className="icon budget-remove" title={`Remove ${c} budget`} aria-label={`Remove ${c} budget`} onClick={() => setLimit(c, '')}>
+                    <X size={15} />
+                  </button>
                 </div>
-                <Progress fraction={s / limit} />
+                <Progress fraction={s / limit} tone={st.tone} />
               </section>
             )
           })}

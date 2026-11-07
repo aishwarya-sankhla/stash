@@ -1,5 +1,5 @@
 // Electron main process: hosts the Stash UI and stores its data in a JSON file on disk.
-const { app, BrowserWindow, dialog, ipcMain, session, shell } = require('electron')
+const { app, BrowserWindow, clipboard, dialog, ipcMain, session, shell } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
@@ -145,6 +145,9 @@ handle('stash:openBackup', async () => {
   }
   return { name: path.basename(file), json }
 })
+
+// The "Copy outline" buttons. Web clipboard access stays blocked by the permission handlers below.
+handle('stash:copyText', (_event, text) => clipboard.writeText(String(text).slice(0, 100_000)))
 
 handle('stash:revealBackups', () => {
   fs.mkdirSync(backupDir(), { recursive: true, mode: 0o700 })

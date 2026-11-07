@@ -1,5 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, Eye, LifeBuoy, Lightbulb, Percent, PartyPopper, Siren, Sunset, type LucideIcon } from 'lucide-react'
-import { buildReport, type PortfolioClass, type Severity } from '../advisor'
+import { buildReport, type PlanItem, type PortfolioClass, type Severity } from '../advisor'
 import { formatCompactINR, formatINR, formatPct, formatRate } from '../format'
 import type { SetData } from '../store'
 import type { AppData } from '../types'
@@ -17,7 +17,8 @@ const CLASSES: PortfolioClass[] = ['equity', 'debt', 'gold']
 
 export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data: AppData; setData: SetData; currentMonth: string; onSetupProfile: () => void }) {
   const r = buildReport(data, currentMonth)
-  const planTotal = r.monthlyPlan.reduce((s, p) => s + p.amount, 0)
+  const plan = r.monthlyPlan
+  const overBy = plan.sipTotal - Math.max(0, plan.saved)
   const counts = r.advice.reduce<Partial<Record<Severity, number>>>((acc, a) => ({ ...acc, [a.severity]: (acc[a.severity] ?? 0) + 1 }), {})
 
   return (
@@ -128,31 +129,46 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
           <div className="card-head">
             <h2>Your monthly game plan</h2>
           </div>
-          {r.monthlyPlan.length === 0 ? (
+          {plan.sipTotal === 0 && plan.extraTotal === 0 ? (
             <p className="empty">No monthly surplus to put to work yet.</p>
           ) : (
             <>
               <div className="plan-total">
-                {formatINR(planTotal)}
-                <span>to put to work each month</span>
+                {formatINR(plan.extraTotal > 0 ? plan.extraTotal : plan.sipTotal)}
+                <span>
+                  {plan.sipTotal === 0
+                    ? 'to put to work each month'
+                    : plan.extraTotal > 0
+                      ? `extra to invest each month, on top of your ${formatINR(plan.sipTotal)} of SIPs`
+                      : 'going into your SIPs each month'}
+                </span>
               </div>
               <div className="plan-bar">
-                {r.monthlyPlan.map((p, i) => (
-                  <span key={p.label} className={`seg seg-${i}`} style={{ flexGrow: p.amount }} title={p.label} />
+                {plan.sips.map((p) => (
+                  <span key={`sip-${p.label}`} className={`seg sip tone-${p.tone}`} style={{ flexGrow: p.amount }} title={`SIPs: ${p.label}`} />
+                ))}
+                {plan.extra.map((p) => (
+                  <span key={p.label} className={`seg tone-${p.tone}`} style={{ flexGrow: p.amount }} title={p.label} />
                 ))}
               </div>
-              <ul className="plan-list">
-                {r.monthlyPlan.map((p, i) => (
-                  <li key={p.label}>
-                    <span className={`legend-dot seg-${i}`} />
-                    <span className="legend-name">{p.label}</span>
-                    <span className="legend-amt">{formatINR(p.amount)}</span>
-                  </li>
-                ))}
-              </ul>
+              {plan.sips.length > 0 && <PlanList title="Already going in through SIPs" items={plan.sips} total={plan.sipTotal} />}
+              {plan.extra.length > 0 && <PlanList title={plan.sips.length > 0 ? 'Extra to invest' : undefined} items={plan.extra} total={plan.extraTotal} />}
+              {r.monthsUsed === 0 ? (
+                <p className="plan-note">Log a full month of income and expenses to see how much is left after your SIPs.</p>
+              ) : (
+                overBy > 0 && (
+                  <p className="plan-note">
+                    Your SIPs are {formatINR(overBy)} a month more than you saved on average ({formatINR(Math.max(0, plan.saved))}). Check they're all still running, and that SIP money isn't
+                    also logged as an expense.
+                  </p>
+                )
+              )}
             </>
           )}
-          <p className="muted small">Emergency fund first, then high-interest debt, then your goals, then long-term investments split by your target mix.</p>
+          <p className="muted small">
+            {plan.sipTotal > 0 ? 'Your SIPs come out of what you save. What’s left goes to the emergency fund' : 'Emergency fund first'}, then high-interest debt, then your goals, then
+            long-term investments, split so {plan.sipTotal > 0 ? 'SIPs and extra together match' : 'they match'} your target mix.
+          </p>
         </section>
         <section className="card">
           <div className="card-head">
@@ -189,5 +205,30 @@ export function Advisor({ data, setData, currentMonth, onSetupProfile }: { data:
         slab; check current rules before acting. Talk to a SEBI-registered investment adviser before big decisions.
       </p>
     </div>
+  )
+}
+
+function PlanList({ title, items, total }: { title?: string; items: PlanItem[]; total: number }) {
+  return (
+    <>
+      {title && (
+        <div className="plan-sub">
+          <span>{title}</span>
+          <span>{formatINR(total)}</span>
+        </div>
+      )}
+      <ul className="plan-list">
+        {items.map((p) => (
+          <li key={p.label}>
+            <span className={`legend-dot tone-${p.tone}`} />
+            <span className="legend-name">
+              {p.label}
+              {p.detail && <small>{p.detail}</small>}
+            </span>
+            <span className="legend-amt">{formatINR(p.amount)}</span>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }

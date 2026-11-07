@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { buildReport, retirementPlan, targetAllocation } from './advisor'
-import { applySips, daysBetween, fdValue, holdingReturn, lastMonths, recordNetWorth, recurringPayments, savingStreak, sipCoveredMonth, xirr } from './finance'
+import { applySips, daysBetween, fdValue, holdingGroup, holdingReturn, lastMonths, recordNetWorth, recurringPayments, savingStreak, sipCoveredMonth, xirr } from './finance'
 import { sampleData } from './sampleData'
 import { DEFAULT_DATA, type AppData, type Holding, type Transaction } from './types'
 
@@ -20,6 +20,23 @@ const holding = (assetClass: Holding['assetClass'], currentValue: number): Holdi
   currentValue,
 })
 const data = (overrides: Partial<AppData>): AppData => ({ ...DEFAULT_DATA, ...overrides })
+
+describe('holdingGroup', () => {
+  it('guesses the holdings-list section from the name, ISIN and type, unless one was chosen', () => {
+    const g = (name: string, assetClass: Holding['assetClass'], extra: Partial<Holding> = {}) => holdingGroup({ name, assetClass, ...extra })
+    expect(g('HDFC Pension Fund Scheme E - Tier I', 'equity')).toBe('nps') // a pension "fund" is NPS, not a mutual fund
+    expect(g('EPF', 'debt')).toBe('pf')
+    expect(g('Axis Small Cap Fund Direct Growth', 'equity')).toBe('mf')
+    expect(g('ICICI Pru Gold ETF FOF', 'gold')).toBe('mf')
+    expect(g('Parag Parikh Flexi Cap - Direct', 'equity', { isin: 'INF879O01027' })).toBe('mf')
+    expect(g('Direct stocks', 'equity')).toBe('stocks')
+    expect(g('Sovereign Gold Bond 2031', 'gold')).toBe('gold')
+    expect(g('Savings account', 'cash')).toBe('cash')
+    expect(g('Flat', 'realEstate')).toBe('property')
+    expect(g('Corporate bond', 'debt')).toBe('other')
+    expect(g('Axis Small Cap Fund', 'equity', { group: 'other' })).toBe('other')
+  })
+})
 
 describe('lastMonths', () => {
   it('crosses year boundaries', () => {
@@ -194,13 +211,26 @@ describe('emergency fund switch', () => {
   })
 })
 
+describe('buildReport budgets', () => {
+  it('flags a fixed bill like rent only when it goes over budget, not when it is nearly spent', () => {
+    const ids = (rent: number) =>
+      buildReport(
+        data({ budgets: { Rent: 32000, Dining: 6000 }, transactions: [tx('2026-11-02', 'expense', rent, 'Rent'), tx('2026-11-03', 'expense', 5000, 'Dining')] }),
+        '2026-11',
+      ).advice.map((a) => [a.id, a.severity])
+    // Rent paid in full is expected; dining at 83% of its budget is worth a tip
+    expect(ids(32000).filter(([id]) => String(id).startsWith('budget-'))).toEqual([['budget-Dining', 'tip']])
+    expect(ids(35000)).toContainEqual(['budget-Rent', 'warning'])
+  })
+})
+
 describe('buildReport monthly plan', () => {
   const months = [tx('2026-09-01', 'income', 80000), tx('2026-09-05', 'expense', 50000)]
 
   it('fills the emergency fund before investing', () => {
     const report = buildReport(data({ transactions: months }), '2026-10')
     // Target 6 × 50,000 = 3,00,000; gap/6 = 50,000 > surplus, so all 30,000 goes to the fund
-    expect(report.monthlyPlan).toEqual([{ label: 'Emergency fund top-up', amount: 30000 }])
+    expect(report.monthlyPlan.extra).toEqual([{ label: 'Emergency fund top-up', tone: 'emergency', amount: 30000 }])
   })
 
   it('pays down high-interest debt after the emergency top-up, then splits the rest by target allocation', () => {
@@ -212,13 +242,44 @@ describe('buildReport monthly plan', () => {
       }),
       '2026-10',
     )
-    const amounts = Object.fromEntries(report.monthlyPlan.map((p) => [p.label, p.amount]))
+    const amounts = Object.fromEntries(report.monthlyPlan.extra.map((p) => [p.label, p.amount]))
     expect(amounts['Emergency fund top-up']).toBeCloseTo(2000)
     expect(amounts['Extra debt repayment']).toBeCloseTo(8000)
     expect(amounts['Equity SIP (index / flexi-cap funds)']).toBeCloseTo(14000)
     // The default 30% slab steers debt money away from debt funds, which are taxed at the slab
     expect(amounts['Debt (EPF/VPF, PPF, arbitrage funds)']).toBeCloseTo(4000)
     expect(amounts['Gold (gold ETF / gold fund)']).toBeCloseTo(2000)
+  })
+
+  describe('with SIPs already running', () => {
+    // Saves 70,000 a month; the emergency fund is full, so everything left is long-term money (target 70 / 20 / 10)
+    const saving = [tx('2026-09-01', 'income', 100000), tx('2026-09-05', 'expense', 30000)]
+    const withSip = (id: string, assetClass: Holding['assetClass'], amount: number): Holding => ({ ...holding(assetClass, 100000), id, sip: { amount, day: 5, lastApplied: '2026-10' } })
+    const plan = (...sips: Holding[]) => buildReport(data({ transactions: saving, holdings: [holding('cash', 180000), ...sips] }), '2026-10').monthlyPlan
+    const extra = (p: ReturnType<typeof plan>) => Object.fromEntries(p.extra.map((x) => [x.tone, x.amount]))
+
+    it('invests only what is left after SIPs, so SIPs and extra together match the target mix', () => {
+      const p = plan(withSip('eq', 'equity', 45000), withSip('arb', 'debt', 5000))
+      expect(p.sipTotal).toBe(50000)
+      expect(p.sips.map((s) => [s.tone, s.amount])).toEqual([['equity', 45000], ['debt', 5000]])
+      // Of 70,000 in total: equity 49,000 (45,000 already in SIPs), debt 14,000 (5,000), gold 7,000 (none)
+      expect(extra(p)).toEqual({ equity: 4000, debt: 9000, gold: 7000 })
+      expect(p.extraTotal).toBe(20000)
+    })
+
+    it('gives nothing extra to a class whose SIPs already exceed its share', () => {
+      const p = plan(withSip('eq', 'equity', 60000))
+      // Equity SIPs of 60,000 beat its 49,000 share; the 10,000 left fills the debt (14,000) and gold (7,000) gaps pro rata
+      expect(extra(p).equity).toBeUndefined()
+      expect(extra(p).debt).toBeCloseTo(6666.67, 1)
+      expect(extra(p).gold).toBeCloseTo(3333.33, 1)
+    })
+
+    it('has no extra when SIPs are more than you save', () => {
+      const p = plan(withSip('eq', 'equity', 80000))
+      expect(p.extra).toEqual([])
+      expect(p.sipTotal - p.saved).toBe(10000)
+    })
   })
 })
 

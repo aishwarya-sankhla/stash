@@ -1,16 +1,17 @@
 import { Gem, PiggyBank, Plus, TrendingDown, TrendingUp } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
-import { fdValue, isoDate, portfolioReturn, totalsByClass } from '../finance'
+import { fdValue, holdingGroup, isoDate, portfolioReturn, totalsByClass } from '../finance'
 import { formatINR, formatMonth, formatPct, formatRate, newId } from '../format'
 import type { SetData } from '../store'
-import { ASSET_CLASS_LABELS, type AppData, type AssetClass, type Holding } from '../types'
+import { ASSET_CLASS_LABELS, HOLDING_GROUP_LABELS, type AppData, type AssetClass, type Holding, type HoldingGroup } from '../types'
 import { CasImport } from './CasImport'
 import { FixedDeposits } from './FixedDeposits'
 import { HoldingRow } from './HoldingRow'
 import { ASSET_STYLE, PageHeader, Stat, TINTS } from './ui'
 
 const CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[]
+const GROUPS = Object.keys(HOLDING_GROUP_LABELS) as HoldingGroup[]
 const shortLabel = (c: AssetClass) => ASSET_CLASS_LABELS[c].split(' (')[0]
 
 export function Investments({ data, setData }: { data: AppData; setData: SetData }) {
@@ -89,11 +90,23 @@ export function Investments({ data, setData }: { data: AppData; setData: SetData
           {data.holdings.length === 0 ? (
             <p className="empty">No holdings yet. Cash holdings count as your emergency fund.</p>
           ) : (
-            <ul className="tx-list">
-              {data.holdings.map((h) => (
-                <HoldingRow key={h.id} holding={h} today={today} onChange={updateHolding} onRemove={() => remove(h.id)} />
-              ))}
-            </ul>
+            GROUPS.map((group) => {
+              const holdings = data.holdings.filter((h) => holdingGroup(h) === group)
+              if (holdings.length === 0) return null
+              return (
+                <div key={group} className="holding-group">
+                  <h3 className="group-head">
+                    <span>{HOLDING_GROUP_LABELS[group]}</span>
+                    <span>{formatINR(holdings.reduce((s, h) => s + h.currentValue, 0))}</span>
+                  </h3>
+                  <ul className="tx-list">
+                    {holdings.map((h) => (
+                      <HoldingRow key={h.id} holding={h} today={today} onChange={updateHolding} onRemove={() => remove(h.id)} />
+                    ))}
+                  </ul>
+                </div>
+              )
+            })
           )}
         </section>
         <section className="card">

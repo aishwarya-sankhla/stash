@@ -1,4 +1,4 @@
-import type { AppData, AssetClass, FixedDeposit, Flow, Holding, Transaction } from './types'
+import type { AppData, AssetClass, FixedDeposit, Flow, Holding, HoldingGroup, Transaction } from './types'
 
 /** 'YYYY-MM' for a date string or Date. */
 export function monthKey(date: string | Date): string {
@@ -23,6 +23,17 @@ export const daysBetween = (from: string, to: string) => dayNumber(to) - dayNumb
  * Value of a cumulative FD on `date`: interest compounded quarterly, as Indian banks do for cumulative FDs.
  * Equals the principal before the start date and stops growing at maturity.
  */
+/** The holdings-list section a holding belongs to: the one you chose, or else a guess from its name, ISIN and type. */
+export function holdingGroup(h: Pick<Holding, 'name' | 'assetClass' | 'isin' | 'group'>): HoldingGroup {
+  if (h.group) return h.group
+  if (/\bnps\b|pension|\btier\s*(?:i{1,2}|[12])\b/i.test(h.name)) return 'nps'
+  if (/\b(?:e?pf|ppf|vpf)\b|provident/i.test(h.name)) return 'pf'
+  // Mutual fund ISINs start with INF.
+  if (h.isin?.startsWith('INF') || /\bfunds?\b|\betf\b|\bfof\b|\bindex\b|nifty|sensex|\bidcw\b/i.test(h.name)) return 'mf'
+  return GROUP_BY_CLASS[h.assetClass] ?? 'other'
+}
+const GROUP_BY_CLASS: Partial<Record<AssetClass, HoldingGroup>> = { cash: 'cash', realEstate: 'property', gold: 'gold', equity: 'stocks' }
+
 export function fdValue(fd: FixedDeposit, date: string): number {
   const tenure = daysBetween(fd.startDate, fd.maturityDate)
   const elapsed = Math.min(tenure, Math.max(0, daysBetween(fd.startDate, date)))

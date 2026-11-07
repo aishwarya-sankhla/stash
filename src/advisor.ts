@@ -1,7 +1,7 @@
 import { daysBetween, fdValue, isoDate, lastMonths, monthlyAverages, previousMonth, recurringPayments, savingsRate, summarizeMonth, totalsByClass } from './finance'
 import { formatCompactINR, formatDate, formatINR, formatMonth, formatPct, formatRate } from './format'
 import { formatTimeLeft, goalStatus, type GoalStatus } from './goals'
-import type { AppData, Holding, Profile } from './types'
+import { FIXED_CATEGORIES, type AppData, type Holding, type Profile } from './types'
 
 export type Severity = 'critical' | 'warning' | 'tip' | 'good'
 
@@ -15,11 +15,27 @@ export interface Advice {
 }
 
 export type PortfolioClass = 'equity' | 'debt' | 'gold'
-export type Allocation = Record<PortfolioClass, number> // fractions summing to 1
+export type Allocation<T = number> = Record<PortfolioClass, T> // fractions summing to 1
+const PLAN_CLASSES: PortfolioClass[] = ['equity', 'debt', 'gold']
 
+export type PlanTone = PortfolioClass | 'emergency' | 'debtRepay' | 'goal' | 'other'
 export interface PlanItem {
   label: string
   amount: number
+  tone: PlanTone
+  /** For SIPs: the funds they go into. */
+  detail?: string
+}
+
+export interface MonthlyPlan {
+  /** Average monthly money in − money out. SIPs aren't expenses, so they're paid out of this. */
+  saved: number
+  /** SIPs already running, grouped by what they're for. */
+  sips: PlanItem[]
+  sipTotal: number
+  /** What's left of `saved` after the SIPs, and where to put it. */
+  extra: PlanItem[]
+  extraTotal: number
 }
 
 export interface RetirementPlan {
@@ -47,7 +63,7 @@ export interface AdvisorReport {
   targetAllocation: Allocation
   currentAllocation: Allocation | null
   portfolioValue: number
-  monthlyPlan: PlanItem[]
+  monthlyPlan: MonthlyPlan
   goals: GoalStatus[]
   retirement: RetirementPlan | null
 }
@@ -542,7 +558,10 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
   for (const [category, limit] of Object.entries(data.budgets)) {
     if (!(limit > 0)) continue
     const spent = thisMonth.byCategory[category] ?? 0
-    const why = [`${category} budget ${formatINR(limit)}; spent ${formatINR(spent)} so far this month (${formatPct(spent / limit)}).`, 'Warned from 80% of the budget.']
+    const why = [
+      `${category} budget ${formatINR(limit)}; spent ${formatINR(spent)} so far this month (${formatPct(spent / limit)}).`,
+      FIXED_CATEGORIES.includes(category) ? `${category} is a fixed bill, so only going over its budget is flagged.` : 'Warned from 80% of the budget.',
+    ]
     if (spent > limit) {
       add({
         id: `budget-${category}`,
@@ -551,7 +570,7 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
         detail: `Spent ${formatINR(spent)} of ${formatINR(limit)} this month (${formatINR(spent - limit)} over).`,
         why,
       })
-    } else if (spent >= limit * 0.8) {
+    } else if (spent >= limit * 0.8 && !FIXED_CATEGORIES.includes(category)) {
       add({
         id: `budget-${category}`,
         severity: 'tip',
@@ -562,31 +581,48 @@ export function buildReport(data: AppData, currentMonth: string, today = isoDate
     }
   }
 
-  // --- Monthly plan: emergency fund → debt → goals → investments --------------
-  const monthlyPlan: PlanItem[] = []
-  let remaining = Math.max(0, surplus)
-  if (remaining > 0 && emergencyShortfall > 0) {
-    const topUp = Math.min(remaining, emergencyShortfall / 6) // fill the gap in ~6 months
-    monthlyPlan.push({ label: 'Emergency fund top-up', amount: topUp })
-    remaining -= topUp
+  // --- Monthly plan: SIPs already running, then the extra: emergency fund → debt → goals → investments
+  // SIPs aren't expenses, so they come out of the average saving; only what's left is extra to invest.
+  const sips: PlanItem[] = []
+  const addSips = (label: string, tone: PlanTone, holdings: Holding[]) => {
+    const withSip = holdings.filter((h) => h.sip && h.sip.amount > 0)
+    const amount = withSip.reduce((s, h) => s + h.sip!.amount, 0)
+    if (amount > 0) sips.push({ label, tone, amount, detail: listNames(withSip.map((h) => h.name), 2) })
+    return amount
   }
-  if (remaining > 0 && profile.highInterestDebt > 0) {
-    const payment = Math.min(remaining, profile.highInterestDebt)
-    monthlyPlan.push({ label: 'Extra debt repayment', amount: payment })
-    remaining -= payment
-  }
-  for (const g of goals) {
-    if (remaining <= 0 || g.monthsLeft < 0 || g.needed <= 0) continue
-    const amount = Math.min(remaining, g.needed)
-    monthlyPlan.push({ label: `Goal: ${g.goal.name}`, amount })
+  const emergencySips = addSips('Emergency fund', 'emergency', ungoaled.filter((h) => h.emergency || h.assetClass === 'cash'))
+  for (const g of goals) addSips(`Goal: ${g.goal.name}`, 'goal', g.holdings)
+  const longTermSips = Object.fromEntries(
+    PLAN_CLASSES.map((c) => [c, addSips(CLASS_LABEL[c], c, longTermHoldings.filter((h) => h.assetClass === c))]),
+  ) as Allocation
+  addSips('Other', 'other', longTerm.holdings.filter((h) => h.assetClass === 'realEstate' || h.assetClass === 'other'))
+  const sipTotal = sips.reduce((s, p) => s + p.amount, 0)
+
+  const extra: PlanItem[] = []
+  let remaining = Math.max(0, surplus) - sipTotal
+  const take = (label: string, tone: PlanTone, wanted: number) => {
+    const amount = Math.min(remaining, wanted)
+    if (amount <= 0) return
+    extra.push({ label, tone, amount })
     remaining -= amount
   }
+  if (emergencyShortfall > 0) take('Emergency fund top-up', 'emergency', emergencyShortfall / 6 - emergencySips) // fill the gap in ~6 months
+  take('Extra debt repayment', 'debtRepay', profile.highInterestDebt)
+  for (const g of goals) if (g.monthsLeft >= 0) take(`Goal: ${g.goal.name}`, 'goal', g.needed - g.sipTotal)
   if (remaining > 0) {
-    monthlyPlan.push({ label: 'Equity SIP (index / flexi-cap funds)', amount: remaining * target.equity })
-    // In the 20%+ slabs, debt funds lose too much to tax; arbitrage funds and tax-free PF/PPF do the job better.
-    monthlyPlan.push({ label: slab >= 0.2 ? 'Debt (EPF/VPF, PPF, arbitrage funds)' : 'Debt (PPF, EPF/VPF, debt funds)', amount: remaining * target.debt })
-    monthlyPlan.push({ label: 'Gold (gold ETF / gold fund)', amount: remaining * target.gold })
+    // Split so SIPs + extra together match the target mix; a class whose SIPs already exceed its share gets nothing.
+    const pool = remaining + PLAN_CLASSES.reduce((s, c) => s + longTermSips[c], 0)
+    const gaps = Object.fromEntries(PLAN_CLASSES.map((c) => [c, Math.max(0, pool * target[c] - longTermSips[c])])) as Allocation
+    const scale = remaining / PLAN_CLASSES.reduce((s, c) => s + gaps[c], 0)
+    const labels: Allocation<string> = {
+      equity: 'Equity SIP (index / flexi-cap funds)',
+      // In the 20%+ slabs, debt funds lose too much to tax; arbitrage funds and tax-free PF/PPF do the job better.
+      debt: slab >= 0.2 ? 'Debt (EPF/VPF, PPF, arbitrage funds)' : 'Debt (PPF, EPF/VPF, debt funds)',
+      gold: 'Gold (gold ETF / gold fund)',
+    }
+    for (const c of PLAN_CLASSES) if (gaps[c] > 0) extra.push({ label: labels[c], tone: c, amount: gaps[c] * scale })
   }
+  const monthlyPlan: MonthlyPlan = { saved: surplus, sips, sipTotal, extra, extraTotal: extra.reduce((s, p) => s + p.amount, 0) }
 
   advice.sort((a, b) => SEVERITY_ORDER.indexOf(a.severity) - SEVERITY_ORDER.indexOf(b.severity))
 

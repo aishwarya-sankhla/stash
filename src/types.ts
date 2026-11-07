@@ -42,6 +42,21 @@ export interface Holding {
   flows?: Flow[]
   /** Set aside as emergency money: counts towards the emergency fund instead of the long-term mix. Cash always counts. */
   emergency?: boolean
+  /** The section it's listed under on the Investments tab. Unset means guessed from its name and type. */
+  group?: HoldingGroup
+}
+
+export type HoldingGroup = 'mf' | 'nps' | 'pf' | 'stocks' | 'gold' | 'cash' | 'property' | 'other'
+/** Sections of the holdings list, in display order. */
+export const HOLDING_GROUP_LABELS: Record<HoldingGroup, string> = {
+  mf: 'Mutual funds',
+  nps: 'NPS',
+  pf: 'PF & PPF',
+  stocks: 'Stocks',
+  gold: 'Gold',
+  cash: 'Bank & cash',
+  property: 'Property',
+  other: 'Other',
 }
 
 /** A cumulative bank fixed deposit: interest is reinvested and paid out at maturity. */
@@ -114,6 +129,8 @@ export const EXPENSE_CATEGORIES = [
   'Travel',
   'Other',
 ]
+/** Fixed bills paid in full once a month: a budget for them flags a change in the amount, not "nearly spent". */
+export const FIXED_CATEGORIES = ['Rent', 'EMI / Loans']
 
 export const INCOME_CATEGORIES = ['Salary', 'Business', 'Freelance', 'Interest / Dividends', 'Rental', 'Other']
 

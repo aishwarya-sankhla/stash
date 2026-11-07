@@ -1,8 +1,8 @@
 import { ChevronDown, X } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { addMoney, daysBetween, holdingReturn, nextMonth, sipCoveredMonth } from '../finance'
+import { addMoney, daysBetween, holdingGroup, holdingReturn, nextMonth, sipCoveredMonth } from '../finance'
 import { formatDate, formatINR, formatMonth, formatPct, formatRate } from '../format'
-import { ASSET_CLASS_LABELS, type AssetClass, type Holding } from '../types'
+import { ASSET_CLASS_LABELS, HOLDING_GROUP_LABELS, type AssetClass, type Holding, type HoldingGroup } from '../types'
 import { ASSET_STYLE, EmergencyToggle, IconTile, MoneyInput } from './ui'
 
 const STALE_DAYS = 60
@@ -10,10 +10,10 @@ const DAYS = Array.from({ length: 28 }, (_, i) => i + 1)
 
 function updatedLabel(h: Holding, today: string) {
   if (!h.valueUpdated) return { text: 'Value not updated yet', stale: true }
+  // The date the value is from (a CAS statement's NAV date, or the day you typed it), not when it was entered.
   const days = daysBetween(h.valueUpdated, today)
-  const text =
-    days <= 0 ? 'today' : days === 1 ? 'yesterday' : days < 30 ? `${days} days ago` : days < 60 ? 'a month ago' : `${Math.floor(days / 30.4)} months ago`
-  return { text: `Updated ${text}`, stale: days > STALE_DAYS }
+  const text = days <= 0 ? 'today' : days === 1 ? 'yesterday' : formatDate(h.valueUpdated)
+  return { text: `Value as of ${text}`, stale: days > STALE_DAYS }
 }
 
 export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding: Holding; today: string; onChange: (h: Holding) => void; onRemove: () => void }) {
@@ -23,6 +23,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
   const [sipDay, setSipDay] = useState(h.sip?.day ?? 5)
   const [name, setName] = useState(h.name)
   const [assetClass, setAssetClass] = useState(h.assetClass)
+  const [group, setGroup] = useState(holdingGroup(h))
   const [invested, setInvested] = useState(String(h.invested))
 
   function toggle() {
@@ -30,6 +31,7 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
     if (!open) {
       setName(h.name)
       setAssetClass(h.assetClass)
+      setGroup(holdingGroup(h))
       setInvested(String(h.invested))
     }
     setOpen(!open)
@@ -39,7 +41,8 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
     e.preventDefault()
     const amount = Number(invested)
     if (!name.trim() || !(amount >= 0) || invested === '') return
-    onChange({ ...h, name: name.trim(), assetClass, invested: amount })
+    // The section is saved only once you change it, so it keeps following the name and type until then.
+    onChange({ ...h, name: name.trim(), assetClass, invested: amount, ...(group !== holdingGroup(h) || h.group ? { group } : {}) })
   }
 
   const ret = h.invested > 0 ? (h.currentValue - h.invested) / h.invested : 0
@@ -117,6 +120,13 @@ export function HoldingRow({ holding: h, today, onChange, onRemove }: { holding:
             <input className="name-input" value={name} onChange={(e) => setName(e.target.value)} required aria-label={`${h.name} name`} />
             <select value={assetClass} onChange={(e) => setAssetClass(e.target.value as AssetClass)} aria-label={`${h.name} asset class`}>
               {Object.entries(ASSET_CLASS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <select value={group} onChange={(e) => setGroup(e.target.value as HoldingGroup)} aria-label={`${h.name} section`} title="Section it's listed under">
+              {Object.entries(HOLDING_GROUP_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>

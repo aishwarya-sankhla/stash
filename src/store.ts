@@ -5,10 +5,12 @@ import {
   ASSET_CLASS_LABELS,
   DEFAULT_DATA,
   EXPENSE_CATEGORIES,
+  HOLDING_GROUP_LABELS,
   INCOME_CATEGORIES,
   type AppData,
   type AssetClass,
   type Holding,
+  type HoldingGroup,
   type FixedDeposit,
   type Flow,
   type Goal,
@@ -38,8 +40,13 @@ interface StashDesktop {
   /** Opens a file picker in the backups folder and returns the chosen backup's contents. */
   openBackup(): Promise<{ name: string; json: string } | null>
   revealBackups(): Promise<string>
+  /** Writes text to the clipboard (the app blocks the web clipboard API). */
+  copyText(text: string): Promise<void>
 }
 export const desktop = (globalThis as { stashDesktop?: StashDesktop }).stashDesktop
+
+/** Copies text to the clipboard, through the desktop app when running in it. */
+export const copyText = (text: string) => (desktop ? desktop.copyText(text) : navigator.clipboard.writeText(text))
 
 /** Path of the desktop data file currently being written to. */
 export let desktopDataPath = ''
@@ -91,6 +98,7 @@ function toHolding(v: unknown): Holding | null {
   const sip = toSip(v.sip)
   if (sip) holding.sip = sip
   if (v.emergency === true) holding.emergency = true
+  if (Object.hasOwn(HOLDING_GROUP_LABELS, text(v.group))) holding.group = text(v.group) as HoldingGroup
   holding.flows = Array.isArray(v.flows) ? toFlows(v.flows) : []
   // Returns are measured from the first cash flow, so one must exist by the date the value was last known.
   // Data saved before Stash tracked cash flows, or by version 0.7.2's test build, whose statement import

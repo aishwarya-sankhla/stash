@@ -185,8 +185,7 @@ export function EmergencyToggle({ on, locked = false, onToggle }: { on: boolean;
   )
 }
 
-export function Progress({ fraction }: { fraction: number }) {
-  const tone = fraction > 1 ? 'over' : fraction >= 0.8 ? 'near' : 'ok'
+export function Progress({ fraction, tone = fraction > 1 ? 'over' : fraction >= 0.8 ? 'near' : 'ok' }: { fraction: number; tone?: string }) {
   return (
     <div className="progress">
       <div className={`progress-bar ${tone}`} style={{ width: `${Math.min(100, fraction * 100)}%` }} />

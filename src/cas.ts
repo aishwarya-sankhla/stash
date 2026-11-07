@@ -370,9 +370,10 @@ export type CasAction = { kind: 'update'; holdingId: string } | { kind: 'add'; a
  * Applies the statement: updated holdings take the statement's cost, value and date; new ones are added.
  * SIPs restart from the statement date, so instalments Stash added after it are re-added on top of the
  * statement's value instead of being lost or counted twice. A statement covering a fund's whole history
- * replaces its cash flows, so its yearly return is known straight away.
+ * replaces its cash flows, so its yearly return is known straight away. Holdings in `remove` (funds from an
+ * earlier statement that aren't in this one) are deleted.
  */
-export function applyCasImport(data: AppData, choices: { fund: CasFund; action: CasAction }[], today: string): AppData {
+export function applyCasImport(data: AppData, choices: { fund: CasFund; action: CasAction }[], today: string, remove: string[] = []): AppData {
   const updates = new Map<string, CasFund>()
   const added: Holding[] = []
   for (const { fund, action } of choices) {
@@ -402,7 +403,7 @@ export function applyCasImport(data: AppData, choices: { fund: CasFund; action: 
       })
     }
   }
-  const holdings = data.holdings.map((h) => {
+  const holdings = data.holdings.filter((h) => !remove.includes(h.id)).map((h) => {
     const fund = updates.get(h.id)
     if (!fund) return h
     const asOf = fund.navDate ?? today

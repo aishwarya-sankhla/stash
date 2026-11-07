@@ -42,7 +42,7 @@ describe('goals', () => {
     expect(withGoal.currentAllocation?.equity).toBeCloseTo(1, 5) // only the long-term equity holding is left
     expect(without.emergencyCurrent).toBe(130000)
     expect(withGoal.emergencyCurrent).toBe(80000)
-    const labels = withGoal.monthlyPlan.map((p) => p.label)
+    const labels = withGoal.monthlyPlan.extra.map((p) => p.label)
     expect(labels.indexOf('Goal: Car')).toBeLessThan(labels.findIndex((l) => l.startsWith('Equity')))
   })
 

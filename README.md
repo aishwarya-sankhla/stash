@@ -20,6 +20,7 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 - [Update mutual funds from your CAS](#update-mutual-funds-from-your-cas)
   - [Get your CAS](#get-your-cas)
   - [Import it](#import-it)
+- [Import FDs from your bank](#import-fds-from-your-bank)
 - [Development](#development)
   - [Desktop builds](#desktop-builds)
 
@@ -28,7 +29,7 @@ An offline app for tracking income, expenses, budgets and investments (in ₹), 
 - **Overview**: money in and out, savings rate, saving streak, net worth over time, spending by category with the change from the previous month (switch to **vs last month** for a side-by-side bar chart), six-month trend.
 - **Transactions**: add, edit, search and delete income and expenses, or import expenses logged on an iPhone. Hover over a row and click the pencil to edit it.
 - **Budgets**: monthly limits per expense category.
-- **Investments**: holdings by asset class with returns (the yearly return, XIRR, once a holding has a year of dated history), monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Edit a holding's name, type or invested amount from its **⌄** panel, and an FD with its pencil button. Click the **lifebuoy** on an FD or holding to count it as emergency money (cash holdings always count); it then stays out of your long-term mix. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).
+- **Investments**: holdings by asset class with returns (the yearly return, XIRR, once a holding has a year of dated history), monthly SIPs and top-ups applied automatically, fixed deposits with maturity tracking, asset mix. Holdings are listed in sections (Mutual funds, NPS, PF & PPF, Stocks, Gold, Bank & cash, Property, Other), guessed from each holding's name and type. Edit a holding's name, type, section or invested amount from its **⌄** panel, and an FD with its pencil button. Click the **lifebuoy** on an FD or holding to count it as emergency money (cash holdings always count); it then stays out of your long-term mix. Update all your mutual funds at once by [importing your CAS statement](#update-mutual-funds-from-your-cas).
 - **Advisor**: prioritised recommendations and a monthly plan (emergency fund → high-interest debt → investments split by an age- and risk-based equity/debt/gold target). **Goals** (such as a car or house down payment) have a target amount and date. You link the holdings that fund each goal, and Stash shows whether you're on track, how much to invest each month, and a safer mix as the date gets closer. Money linked to a goal is kept out of the emergency fund and the long-term mix. It also projects your **retirement** corpus against what your current spending will need, runs **tax checks** for your slab (Regular plans, yearly tax-free gain booking from January to March, FDs and debt funds compared with arbitrage funds after tax), and spots **spending jumps and recurring payments**. Every tip has a **Why?** link with its numbers and rule. The logic is in `src/advisor.ts` and `src/goals.ts`.
 - **Yearly return (XIRR)**: Stash records the date of every SIP instalment and top-up, so it can show the yearly return that accounts for when each rupee went in, like your NPS statement does. Holdings you already had start counting from their last value update, so their yearly return appears a year later. Import a CAS statement covering your first purchase to get it straight away.
 - **Settings**: your profile for the advisor (including retirement age and tax slab), the data file location, iPhone import, export/import and sample data.
@@ -180,7 +181,25 @@ The detailed CAS from CAMS or KFintech works best. If you have a demat account, 
 3. Check the preview. Each fund is matched to an existing holding by ISIN, or else by name (a Direct plan is never matched with a Regular one). For each fund choose **Update** an existing holding, **Add as new holding**, or **Skip**.
 4. Click **Import**. Each updated holding gets the invested amount, current value and NAV date from the statement. Any SIP instalments due after the statement date are added back on top. Funds whose whole purchase history is in the statement (the preview shows "history since …") also get their dated purchases, so their yearly return shows straight away.
 
+Funds imported from an earlier statement that aren't in the new one (because you sold them) are listed in the preview and removed, unless you untick them. Holdings you added by hand are never removed. On the desktop app, Stash backs up your data before importing.
+
 Stash's CAS reader has only been tested on sample statements. If a fund is missing or shows the wrong figures, check the preview before importing, and enter that fund by hand.
+
+## Import FDs from your bank
+
+Stash can replace your FDs at **HDFC Bank**, **SBI** and **ICICI Bank** with the ones in the bank's own PDFs, if you'd rather start again from the bank's figures than fix them by hand.
+
+1. Download the PDFs from netbanking:
+   - **HDFC Bank:** FD/RD → FD → pick an FD → **Deposit Advice**, once for each FD.
+   - **SBI:** Deposit & Investment → Deposit → **e-Receipt for Fixed Deposits** → **View/Download Deposit Receipt**, once for each FD.
+   - **ICICI Bank:** Account Summary → **View/Download Fixed Deposit Advice**, once for each FD.
+   - Or an **FD summary** page listing all your FDs: open it in netbanking and use **Print → Save as PDF**.
+2. Go to **Investments** → **Fixed deposits** → **Import from bank PDFs…** and select **all of a bank's PDFs at once**. You can mix banks.
+3. If a PDF is password-protected, enter its password (often your customer ID or date of birth; the bank's email says which). Stash tries it on the next files too, and doesn't save it.
+4. Check the preview. If a PDF names its bank only in its logo, Stash asks which bank it's from. Each FD shows as **New** or **Updates your FD** (same bank, amount and dates; the emergency fund switch is kept). FDs at the same bank that aren't in the files are listed for removal; untick any to keep. FDs at other banks aren't touched.
+5. Click **Import**. On the desktop app, Stash backs up your data first.
+
+ICICI Bank's summary has no start dates, so Stash works each one out from the balance, maturity amount and rate; the preview marks these so you can check them. Stash assumes cumulative FDs, where interest is reinvested. The preview warns when an FD pays its interest out (its maturity amount equals the principal), because Stash will then show its value too high. The reader is built from the banks' usual layouts and tested on sample PDFs, not on real ones. If it finds nothing, it offers a privacy-safe outline of the PDF (its layout, with numbers replaced by 0 and every word other than common banking words replaced by x) to share so the reader can be fixed.
 
 ## Development
 

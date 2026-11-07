@@ -4,6 +4,7 @@ import { daysBetween, fdValue, isoDate } from '../finance'
 import { formatDate, formatINR, newId } from '../format'
 import type { SetData } from '../store'
 import type { AppData, FixedDeposit } from '../types'
+import { FdImport } from './FdImport'
 import { EmergencyToggle, IconTile } from './ui'
 
 const oneYearLater = (date: string) => {
@@ -83,6 +84,7 @@ export function FixedDeposits({ data, setData }: { data: AppData; setData: SetDa
           </span>
         )}
       </div>
+      <FdImport data={data} setData={setData} />
       <form ref={form} className={`fd-form ${editing ? 'editing' : ''}`} onSubmit={submit}>
         <label className="field grow">
           <span>Bank</span>

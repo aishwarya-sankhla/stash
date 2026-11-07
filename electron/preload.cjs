@@ -12,4 +12,5 @@ contextBridge.exposeInMainWorld('stashDesktop', {
   backupNow: () => ipcRenderer.invoke('stash:backupNow'),
   openBackup: () => ipcRenderer.invoke('stash:openBackup'),
   revealBackups: () => ipcRenderer.invoke('stash:revealBackups'),
+  copyText: (text) => ipcRenderer.invoke('stash:copyText', text),
 })

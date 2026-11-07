@@ -3,7 +3,7 @@ import { useRef, useState, type FormEvent } from 'react'
 import { applyCasImport, casOutline, guessAssetClass, matchHolding, parseCasText, type CasAction, type CasFund } from '../cas'
 import { isoDate } from '../finance'
 import { formatDate, formatINR } from '../format'
-import type { SetData } from '../store'
+import { copyText, desktop, type SetData } from '../store'
 import { ASSET_CLASS_LABELS, type AppData, type AssetClass } from '../types'
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024
@@ -23,6 +23,8 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
   /** Privacy-safe outline of a statement that couldn't be read, for reporting it. */
   const [outline, setOutline] = useState('')
   const [copied, setCopied] = useState(false)
+  /** Holdings from an earlier statement that aren't in this one, which the reader chose to keep. */
+  const [kept, setKept] = useState<Set<string>>(new Set())
 
   async function read(name: string, bytes: ArrayBuffer, pwd?: string) {
     setBusy(true)
@@ -59,6 +61,7 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
       setFile({ name, bytes })
       setNeedPassword(false)
       setPassword('')
+      setKept(new Set())
     } catch {
       reset()
       setMessage(`Couldn't read ${name}. Is it a PDF statement?`)
@@ -90,16 +93,23 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
     )
   }
 
-  function apply() {
+  async function apply() {
     if (!rows) return
+    await desktop?.backupNow()
     const updated = rows.filter((r) => r.action.kind === 'update').length
     const added = rows.filter((r) => r.action.kind === 'add').length
-    setData((d) => applyCasImport(d, rows, isoDate()))
-    setMessage(`Updated ${updated} holding${updated === 1 ? '' : 's'} and added ${added} from ${file?.name}.`)
+    const removed = removing.map((h) => h.id)
+    setData((d) => applyCasImport(d, rows, isoDate(), removed))
+    setMessage(`Updated ${updated} holding${updated === 1 ? '' : 's'}, added ${added}${removed.length > 0 ? ` and removed ${removed.length}` : ''} from ${file?.name}.`)
     reset()
   }
 
   const chosen = rows?.filter((r) => r.action.kind !== 'skip') ?? []
+  // Funds imported from an earlier statement (they have an ISIN) that this one doesn't list: sold, so removed unless kept.
+  const missing = rows
+    ? data.holdings.filter((h) => h.isin && !rows.some((r) => r.fund.isin === h.isin || (r.action.kind === 'update' && r.action.holdingId === h.id)))
+    : []
+  const removing = missing.filter((h) => !kept.has(h.id))
   const asOf = rows?.map((r) => r.fund.navDate).filter(Boolean).sort().at(-1)
 
   return (
@@ -202,12 +212,37 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
           <p className="muted small">
             Updating sets the holding's invested amount, value and date from the statement; SIP instalments after that date are added back automatically.
             Funds with a history date get their full purchase history too, so their yearly return (XIRR) shows straight away.
-            Holdings not in the statement (EPF, NPS, FDs and so on) stay as they are. Funds you split into two rows, like a balanced advantage fund, are
+            Holdings you added by hand (EPF, NPS, FDs and so on) stay as they are. Funds you split into two rows, like a balanced advantage fund, are
             best skipped and updated by hand.
           </p>
+          {missing.length > 0 && (
+            <>
+              <p className="fd-import-sub">Imported from an earlier statement but not in this one, so removed to match it. Untick any you want to keep:</p>
+              <ul className="fd-import-list">
+                {missing.map((h) => (
+                  <li key={h.id} className={kept.has(h.id) ? 'off' : ''}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={!kept.has(h.id)}
+                        onChange={() => setKept((s) => (s.has(h.id) ? new Set([...s].filter((x) => x !== h.id)) : new Set([...s, h.id])))}
+                        aria-label={`Remove ${h.name}`}
+                      />
+                      <span>
+                        {h.name}
+                        <span className="chip-sub">{formatINR(h.currentValue)}</span>
+                      </span>
+                    </label>
+                    <span className={`tag ${kept.has(h.id) ? 'neutral' : 'over'}`}>{kept.has(h.id) ? 'Keep' : 'Remove'}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <div className="row">
             <button className="primary" onClick={apply} disabled={chosen.length === 0}>
               Import {chosen.length} fund{chosen.length === 1 ? '' : 's'}
+              {removing.length > 0 && `, remove ${removing.length}`}
             </button>
             <button onClick={reset}>Cancel</button>
           </div>
@@ -226,7 +261,7 @@ export function CasImport({ data, setData }: { data: AppData; setData: SetData }
           <div className="row">
             <button
               onClick={async () => {
-                await navigator.clipboard.writeText(outline)
+                await copyText(outline)
                 setCopied(true)
               }}
             >
